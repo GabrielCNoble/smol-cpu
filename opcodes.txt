@@ -67,13 +67,14 @@ uops:
 			1 = word
 
 		step 0: assert output enable and enable memory input buffer
-		step 1: clock memory and enable writes to data_latch (low byte will be selected)
-		step 2: clock data_latch
+		step 1: assert memory clock and enable writes to data_latch (low byte will be selected)
+		step 2: assert data_latch clock, enable addr_latch writes
 
 		if w = 1
 
-		step 3: select data_latch high byte
-		step 4: 
+		step 3: deassert memory and data_latch clock, select data_latch high byte, assert data_latch clock
+		step 4: assert memory clock
+		step 5: assert data_latch clock
 	=====================================
 
 	0xor15: op alu, register
