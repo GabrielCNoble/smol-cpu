@@ -61,14 +61,19 @@ uops:
 		TODO
 	=====================================
 
-	0x0b04: mov data_latch, [addr_latch]
-		b = byte to move
-			0 = lower byte
-			1 = upper byte
+	0x0w04: mov data_latch, [addr_latch]
+		w = read width
+			0 = byte
+			1 = word
 
 		step 0: assert output enable and enable memory input buffer
-		step 1: clock memory
+		step 1: clock memory and enable writes to data_latch (low byte will be selected)
 		step 2: clock data_latch
+
+		if w = 1
+
+		step 3: select data_latch high byte
+		step 4: 
 	=====================================
 
 	0xor15: op alu, register
