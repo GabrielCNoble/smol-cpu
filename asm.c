@@ -5,35 +5,92 @@
 #include "asm.h"
 
 
-struct keyword_t keywords[] = {
-    [KEYWORD_MOV]   = {.text = "mov", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_ADD]   = {.text = "add", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_SUB]   = {.text = "sub", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_MUL]   = {.text = "mul", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_DIV]   = {.text = "div", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_CMP]   = {.text = "cmp", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_AND]   = {.text = "and", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_OR]    = {.text = "or", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_XOR]   = {.text = "xor", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_NOT]   = {.text = "not", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_SHL]   = {.text = "shl", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_SHR]   = {.text = "shr", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_JMP]   = {.text = "jmp", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_JZ]    = {.text = "jz", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_JE]    = {.text = "je", .type = KEYWORD_TYPE_INSTRUCTION },
-    [KEYWORD_JNE]   = {.text = "jne", .type = KEYWORD_TYPE_INSTRUCTION },
+// struct keyword_t keywords[] = {
+//     [KEYWORD_MOV]   = {.text = "mov", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_ADD]   = {.text = "add", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_SUB]   = {.text = "sub", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_MUL]   = {.text = "mul", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_DIV]   = {.text = "div", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_CMP]   = {.text = "cmp", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_AND]   = {.text = "and", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_OR]    = {.text = "or", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_XOR]   = {.text = "xor", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_NOT]   = {.text = "not", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_SHL]   = {.text = "shl", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_SHR]   = {.text = "shr", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_JMP]   = {.text = "jmp", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_JZ]    = {.text = "jz", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_JNZ]   = {.text = "jnz", .type = KEYWORD_TYPE_INSTRUCTION},
+//     [KEYWORD_JE]    = {.text = "je", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_JNE]   = {.text = "jne", .type = KEYWORD_TYPE_INSTRUCTION },
+//     [KEYWORD_CALL]  = {.text = "call", .type = KEYWORD_TYPE_INSTRUCTION},
 
-    [KEYWORD_ACCL]  = {.text = "accl", .type = KEYWORD_TYPE_REGISTER },
-    [KEYWORD_ACCH]  = {.text = "acch", .type = KEYWORD_TYPE_REGISTER },
-    [KEYWORD_ACC]   = {.text = "acc", .type = KEYWORD_TYPE_REGISTER },
-    [KEYWORD_BASE]  = {.text = "base", .type = KEYWORD_TYPE_REGISTER },
-    [KEYWORD_STT]    = {.text = "stt", .type = KEYWORD_TYPE_REGISTER },
-    [KEYWORD_STB]    = {.text = "stb", .type = KEYWORD_TYPE_REGISTER }
+//     [KEYWORD_ACCL]  = {.text = "accl", .type = KEYWORD_TYPE_REGISTER },
+//     [KEYWORD_ACCH]  = {.text = "acch", .type = KEYWORD_TYPE_REGISTER },
+//     [KEYWORD_ACC]   = {.text = "acc", .type = KEYWORD_TYPE_REGISTER },
+//     [KEYWORD_BASE]  = {.text = "base", .type = KEYWORD_TYPE_REGISTER },
+//     [KEYWORD_STT]    = {.text = "stt", .type = KEYWORD_TYPE_REGISTER },
+//     [KEYWORD_STB]    = {.text = "stb", .type = KEYWORD_TYPE_REGISTER }
+// };
+
+struct reg_t regs[] = {
+    {.name = "accl", .value = REG_ACCL},
+    {.name = "acch", .value = REG_ACCH},
+    {.name = "acc", .value = REG_ACCW},
+    {.name = "accw", .value = REG_ACCW},
+    {.name = "base", .value = REG_BASE},
+    {.name = "stt", .value = REG_STT},
+    {.name = "stb", .value = REG_STB},
 };
 
-// uint32_t instructions[] = {
-//     [KEYWORD_MOV]
-// };
+struct opcode_t opcodes[] = {
+    [OPCODE_MOV]    = {
+        .name = "mov",
+        .variant_count = 17,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x01, .dst_reg = 1 << REG_ACCL},
+            {.opcode = 0x02, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
+
+            {.opcode = 0x03, .dst_reg = 1 << REG_ACCH},
+            {.opcode = 0x04, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCL},
+
+            {.opcode = 0x05, .dst_reg = 1 << REG_ACCW},
+            {.opcode = 0x06, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x07, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STT},
+            {.opcode = 0x08, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x09, .dst_reg = 1 << REG_BASE},
+            {.opcode = 0x0a, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x0b, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STT},
+            {.opcode = 0x0c, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x0d, .dst_reg = 1 << REG_STT},
+            {.opcode = 0x0e, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x0f, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x10, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_STB},
+            
+            {.opcode = 0x11, .dst_reg = 1 << REG_STB, .src_reg = 1 << REG_STT},
+        }
+    },
+    [OPCODE_ADD]    = {.name = "add"},
+    [OPCODE_SUB]    = {.name = "sub"},
+    [OPCODE_MUL]    = {.name = "mul"},
+    [OPCODE_DIV]    = {.name = "div"},
+    [OPCODE_CMP]    = {.name = "cmp"},
+    [OPCODE_AND]    = {.name = "and"},
+    [OPCODE_OR]     = {.name = "or"},
+    [OPCODE_XOR]    = {.name = "xor"},
+    [OPCODE_NOT]    = {.name = "not"},
+    [OPCODE_SHL]    = {.name = "shl"},
+    [OPCODE_SHR]    = {.name = "shr"},
+    [OPCODE_INC]    = {.name = "inc"},
+    [OPCODE_DEC]    = {.name = "dec"},
+    [OPCODE_JMP]    = {.name = "jmp"},
+    [OPCODE_JZ]     = {.name = "jz"},
+    [OPCODE_JNZ]    = {.name = "jnz"},
+    [OPCODE_CALL]   = {.name = "call"},
+    [OPCODE_RET]    = {.name = "ret"}
+};
 
 const char punctuators[] = {
     [PUNCTUATOR_COMMA]      = ',',
@@ -43,80 +100,80 @@ const char punctuators[] = {
     [PUNCTUATOR_MINUS]      = '-'
 };
 
-
 const char map[] = {
-    ['a'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['b'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['c'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['d'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['e'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['f'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['g'] = TOKEN_TYPE_KEYWORD,
-    ['h'] = TOKEN_TYPE_KEYWORD,
-    ['i'] = TOKEN_TYPE_KEYWORD,
-    ['j'] = TOKEN_TYPE_KEYWORD,
-    ['k'] = TOKEN_TYPE_KEYWORD,
-    ['l'] = TOKEN_TYPE_KEYWORD,
-    ['m'] = TOKEN_TYPE_KEYWORD,
-    ['n'] = TOKEN_TYPE_KEYWORD,
-    ['o'] = TOKEN_TYPE_KEYWORD,
-    ['p'] = TOKEN_TYPE_KEYWORD,
-    ['q'] = TOKEN_TYPE_KEYWORD,
-    ['r'] = TOKEN_TYPE_KEYWORD,
-    ['s'] = TOKEN_TYPE_KEYWORD,
-    ['t'] = TOKEN_TYPE_KEYWORD,
-    ['u'] = TOKEN_TYPE_KEYWORD,
-    ['v'] = TOKEN_TYPE_KEYWORD,
-    ['w'] = TOKEN_TYPE_KEYWORD,
-    ['x'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['y'] = TOKEN_TYPE_KEYWORD,
-    ['z'] = TOKEN_TYPE_KEYWORD,
+    ['a'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['b'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['c'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['d'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['e'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['f'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['g'] = CHAR_TYPE_KEYWORD,
+    ['h'] = CHAR_TYPE_KEYWORD,
+    ['i'] = CHAR_TYPE_KEYWORD,
+    ['j'] = CHAR_TYPE_KEYWORD,
+    ['k'] = CHAR_TYPE_KEYWORD,
+    ['l'] = CHAR_TYPE_KEYWORD,
+    ['m'] = CHAR_TYPE_KEYWORD,
+    ['n'] = CHAR_TYPE_KEYWORD,
+    ['o'] = CHAR_TYPE_KEYWORD,
+    ['p'] = CHAR_TYPE_KEYWORD,
+    ['q'] = CHAR_TYPE_KEYWORD,
+    ['r'] = CHAR_TYPE_KEYWORD,
+    ['s'] = CHAR_TYPE_KEYWORD,
+    ['t'] = CHAR_TYPE_KEYWORD,
+    ['u'] = CHAR_TYPE_KEYWORD,
+    ['v'] = CHAR_TYPE_KEYWORD,
+    ['w'] = CHAR_TYPE_KEYWORD,
+    ['x'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['y'] = CHAR_TYPE_KEYWORD,
+    ['z'] = CHAR_TYPE_KEYWORD,
 
-    ['A'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['B'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['C'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['D'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['E'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['F'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['G'] = TOKEN_TYPE_KEYWORD,
-    ['H'] = TOKEN_TYPE_KEYWORD,
-    ['I'] = TOKEN_TYPE_KEYWORD,
-    ['J'] = TOKEN_TYPE_KEYWORD,
-    ['K'] = TOKEN_TYPE_KEYWORD,
-    ['L'] = TOKEN_TYPE_KEYWORD,
-    ['M'] = TOKEN_TYPE_KEYWORD,
-    ['N'] = TOKEN_TYPE_KEYWORD,
-    ['O'] = TOKEN_TYPE_KEYWORD,
-    ['P'] = TOKEN_TYPE_KEYWORD,
-    ['Q'] = TOKEN_TYPE_KEYWORD,
-    ['R'] = TOKEN_TYPE_KEYWORD,
-    ['S'] = TOKEN_TYPE_KEYWORD,
-    ['T'] = TOKEN_TYPE_KEYWORD,
-    ['Y'] = TOKEN_TYPE_KEYWORD,
-    ['V'] = TOKEN_TYPE_KEYWORD,
-    ['W'] = TOKEN_TYPE_KEYWORD,
-    ['X'] = TOKEN_TYPE_CONSTANT | TOKEN_TYPE_KEYWORD,
-    ['Y'] = TOKEN_TYPE_KEYWORD,
-    ['Z'] = TOKEN_TYPE_KEYWORD,
+    ['A'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['B'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['C'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['D'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['E'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['F'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['G'] = CHAR_TYPE_KEYWORD,
+    ['H'] = CHAR_TYPE_KEYWORD,
+    ['I'] = CHAR_TYPE_KEYWORD,
+    ['J'] = CHAR_TYPE_KEYWORD,
+    ['K'] = CHAR_TYPE_KEYWORD,
+    ['L'] = CHAR_TYPE_KEYWORD,
+    ['M'] = CHAR_TYPE_KEYWORD,
+    ['N'] = CHAR_TYPE_KEYWORD,
+    ['O'] = CHAR_TYPE_KEYWORD,
+    ['P'] = CHAR_TYPE_KEYWORD,
+    ['Q'] = CHAR_TYPE_KEYWORD,
+    ['R'] = CHAR_TYPE_KEYWORD,
+    ['S'] = CHAR_TYPE_KEYWORD,
+    ['T'] = CHAR_TYPE_KEYWORD,
+    ['Y'] = CHAR_TYPE_KEYWORD,
+    ['V'] = CHAR_TYPE_KEYWORD,
+    ['W'] = CHAR_TYPE_KEYWORD,
+    ['X'] = CHAR_TYPE_CONSTANT | CHAR_TYPE_KEYWORD,
+    ['Y'] = CHAR_TYPE_KEYWORD,
+    ['Z'] = CHAR_TYPE_KEYWORD,
 
-    ['0'] = TOKEN_TYPE_CONSTANT,
-    ['1'] = TOKEN_TYPE_CONSTANT,
-    ['2'] = TOKEN_TYPE_CONSTANT,
-    ['3'] = TOKEN_TYPE_CONSTANT,
-    ['4'] = TOKEN_TYPE_CONSTANT,
-    ['5'] = TOKEN_TYPE_CONSTANT,
-    ['6'] = TOKEN_TYPE_CONSTANT,
-    ['7'] = TOKEN_TYPE_CONSTANT,
-    ['8'] = TOKEN_TYPE_CONSTANT,
-    ['9'] = TOKEN_TYPE_CONSTANT,
+    ['0'] = CHAR_TYPE_CONSTANT,
+    ['1'] = CHAR_TYPE_CONSTANT,
+    ['2'] = CHAR_TYPE_CONSTANT,
+    ['3'] = CHAR_TYPE_CONSTANT,
+    ['4'] = CHAR_TYPE_CONSTANT,
+    ['5'] = CHAR_TYPE_CONSTANT,
+    ['6'] = CHAR_TYPE_CONSTANT,
+    ['7'] = CHAR_TYPE_CONSTANT,
+    ['8'] = CHAR_TYPE_CONSTANT,
+    ['9'] = CHAR_TYPE_CONSTANT,
 
-    ['+'] = TOKEN_TYPE_PUNCTUATOR,
-    ['-'] = TOKEN_TYPE_PUNCTUATOR,
-    ['['] = TOKEN_TYPE_PUNCTUATOR,
-    [']'] = TOKEN_TYPE_PUNCTUATOR,
-    [','] = TOKEN_TYPE_PUNCTUATOR
+    ['+'] = CHAR_TYPE_PUNCTUATOR,
+    ['-'] = CHAR_TYPE_PUNCTUATOR,
+    ['['] = CHAR_TYPE_PUNCTUATOR,
+    [']'] = CHAR_TYPE_PUNCTUATOR,
+    [','] = CHAR_TYPE_PUNCTUATOR
 };
 
+uint32_t line_source_offset = 0;
 uint32_t line = 1;
 uint32_t column = 1;
 uint32_t source_offset = 0;
@@ -137,10 +194,12 @@ void next_token()
     {
         if(source[source_offset] == '\n')
         {
-            column = 1;
+            column = 0;
             line++;
+            line_source_offset = source_offset;
         }
 
+        column++;
         source_offset++;
     }
 
@@ -176,6 +235,9 @@ void next_token()
                 cur_token.token = PUNCTUATOR_MINUS;
             break;
         }
+
+        cur_token.line = line;
+        cur_token.column = column;
 
         source_offset++;
         column++;
@@ -257,27 +319,39 @@ void next_token()
 
             cur_token.type = TOKEN_TYPE_CONSTANT;
             cur_token.token = (uint16_t)constant_value;
+            cur_token.line = line;
+            cur_token.column = column;
         }
         else
         {
-            /* probably a keyword, so find out which */
-            uint32_t keyword = 0;
-
-            for(; keyword < KEYWORD_LAST; keyword++)
+            /* test all opcodes */
+            for(uint32_t index = 0; index < OPCODE_LAST; index++)
             {
-                if(!strcmp(token_text, keywords[keyword].text))
+                if(!strcmp(token_text, opcodes[index].name))
                 {
-                    cur_token.type = TOKEN_TYPE_KEYWORD;
-                    cur_token.token = keyword;
-                    break;
+                    cur_token.type = TOKEN_TYPE_OPCODE;
+                    cur_token.token = index;
+                    cur_token.line = line;
+                    cur_token.column = column;
+                    return;
+                }
+            }
+            
+            /* test all regs */
+            for(uint32_t index = 0; index < sizeof(regs) / sizeof(regs[0]); index++)
+            {
+                if(!strcmp(token_text, regs[index].name))
+                {
+                    cur_token.type = TOKEN_TYPE_REG;
+                    cur_token.token = index;
+                    cur_token.line = line;
+                    cur_token.column = column;
+                    return;
                 }
             }
 
-            if(keyword == KEYWORD_LAST)
-            {
-                /* identifiers would be handled here */
-                piss(PISS_ERROR, "Unknown keyword [%s] at line %d, column %d!", token_text, start_line, start_column);
-            }
+            /* identifiers/labels would be handled here */
+            piss(PISS_ERROR, "Unknown keyword [%s] at line %d, column %d!", token_text, start_line, start_column);
         }
     }
 }
@@ -288,15 +362,24 @@ void parse()
     {
         next_token();
 
-        if(cur_token.type == TOKEN_TYPE_KEYWORD && keywords[cur_token.token].type == KEYWORD_TYPE_INSTRUCTION)
+        if(cur_token.type == TOKEN_TYPE_OPCODE)
         {
-            
+            parse_instruction();
         }
+
+        // if(cur_token.type == TOKEN_TYPE_KEYWORD && keywords[cur_token.token].type == KEYWORD_TYPE_INSTRUCTION)
+        // {
+            
+        // }
 
         // switch(cur_token.type)
         // {
-        //     case TOKEN_TYPE_KEYWORD:
-        //         printf("keyword: %s\n", keywords[cur_token.token].text);
+        //     case TOKEN_TYPE_OPCODE:
+        //         printf("opcode: %s\n", opcodes[cur_token.token].name);
+        //     break;
+
+        //     case TOKEN_TYPE_REG:
+        //         printf("reg: %s\n", regs[cur_token.token].name);
         //     break;
 
         //     case TOKEN_TYPE_PUNCTUATOR:
@@ -307,6 +390,87 @@ void parse()
         //         printf("constant: %x\n", cur_token.token);
         //     break;
         // }
+    }
+}
+
+void parse_instruction()
+{
+    struct opcode_t *opcode = opcodes + cur_token.token;
+    struct reg_t *src_reg = NULL;
+    struct reg_t *dst_reg = NULL;
+    uint32_t single_operand = 0;
+    next_token();
+
+    if(cur_token.type == TOKEN_TYPE_REG)
+    {
+        /* instruction destination is a register */
+        // dst_reg = cur_token;
+        dst_reg = regs + cur_token.token;
+    }
+    else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
+    {
+        /* instruction destination is a memory location */
+    }
+    else
+    {
+        piss(PISS_ERROR, "Expecting register or '[' at line %d, column %d!", cur_token.line, cur_token.column);
+    }
+
+    next_token();
+
+    if(cur_token.type != TOKEN_TYPE_PUNCTUATOR)
+    {
+        /* check if this instruction takes only one operand */
+        uint32_t index = 0;
+
+        for(; index < opcode->variant_count; index++)
+        {
+            if(opcode->variants[index].src_reg == 0)
+            {
+                break;
+            }
+        }
+
+        if(index >= opcode->variant_count)
+        {
+            piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
+        }
+
+        single_operand = 1;
+    }
+    else if(cur_token.token != PUNCTUATOR_COMMA)
+    {
+        /* the only token permitted after the first operand is a comma, so if we got anything else here, that's bad */
+        piss(PISS_ERROR, "Expecting ',' at line %d, column %d!", cur_token.line, cur_token.column);
+    }
+
+    if(single_operand)
+    {
+        /* we're done here, so emit an instruction */
+        printf("opcode: %s, operand: %s\n", opcode->name, dst_reg->name);
+        return;
+    }
+
+    next_token();
+
+    if(cur_token.type == TOKEN_TYPE_REG)
+    {
+        /* second operand is a register */
+        src_reg = regs + cur_token.token;
+        printf("opcode: %s, first operand: %s, second operand: %s\n", opcode->name, dst_reg->name, src_reg->name);
+    }
+    else if(cur_token.type == TOKEN_TYPE_CONSTANT)
+    {
+        /* second operand is a constant */
+        printf("opcode: %s, first operand: %s, second operand: %x\n", opcode->name, dst_reg->name, cur_token.token);
+    }
+    else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
+    {
+
+    }
+    else
+    {
+        piss(PISS_ERROR, "Expecting register or '[' at line %d, column %d!", cur_token.line, cur_token.column);
     }
 }
 
@@ -331,6 +495,7 @@ void piss(uint32_t level, const char *fmt, ...)
     }
     
     vprintf(fmt, args);
+    printf("\n");
     va_end(args);
 
     if(level == PISS_ERROR)

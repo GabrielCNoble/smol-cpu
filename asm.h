@@ -10,23 +10,21 @@ enum PISS_LEVEL
     PISS_MESSAGE,
 };
 
-enum OPCODES
+enum CHAR_TYPE
 {
-    OPCODE_NOP                  = 0x00,
-    OPCODE_MOV_ACCL_IMM8        = 0x01,
-    OPCODE_MOV_ACCH_IMM8        = 0x02,
-    OPCODE_MOV_ACC_IMM16        = 0x03,
-
-    OPCODE_ADD_ACCL_IMM8        = 0x05,
-    OPCODE_ADD_ACCH_IMM8        = 0x06,
+    CHAR_TYPE_PUNCTUATOR       = 1,
+    CHAR_TYPE_KEYWORD          = 1 << 1,
+    CHAR_TYPE_CONSTANT         = 1 << 2,
+    CHAR_TYPE_SPACE            = 0,
 };
 
 enum TOKEN_TYPE
 {
-    TOKEN_TYPE_PUNCTUATOR       = 1,
-    TOKEN_TYPE_KEYWORD          = 1 << 1,
-    TOKEN_TYPE_CONSTANT         = 1 << 2,
     TOKEN_TYPE_SPACE            = 0,
+    TOKEN_TYPE_PUNCTUATOR,
+    TOKEN_TYPE_REG,
+    TOKEN_TYPE_OPCODE,
+    TOKEN_TYPE_CONSTANT,
 };
 
 enum CONSTANTS 
@@ -47,55 +45,124 @@ enum PUNCTUATORS
     PUNCTUATOR_LAST
 };
 
-enum KEYWORDS
-{
-    KEYWORD_MOV = 0,
-    KEYWORD_ADD,
-    KEYWORD_SUB,
-    KEYWORD_MUL,
-    KEYWORD_DIV,
-    KEYWORD_CMP,
-    KEYWORD_AND,
-    KEYWORD_OR,
-    KEYWORD_XOR,
-    KEYWORD_NOT,
-    KEYWORD_SHL,
-    KEYWORD_SHR,
-    KEYWORD_JMP,
-    KEYWORD_JZ,
-    KEYWORD_JE,
-    KEYWORD_JNE,
+// enum KEYWORDS
+// {
+//     KEYWORD_MOV = 0,
+//     KEYWORD_ADD,
+//     KEYWORD_SUB,
+//     KEYWORD_MUL,
+//     KEYWORD_DIV,
+//     KEYWORD_CMP,
+//     KEYWORD_AND,
+//     KEYWORD_OR,
+//     KEYWORD_XOR,
+//     KEYWORD_NOT,
+//     KEYWORD_SHL,
+//     KEYWORD_SHR,
+//     KEYWORD_JMP,
+//     KEYWORD_JZ,
+//     KEYWORD_JNZ,
+//     KEYWORD_JE,
+//     KEYWORD_JNE,
 
-    KEYWORD_ACCL,
-    KEYWORD_ACCH,
-    KEYWORD_ACC,
-    KEYWORD_BASE, 
-    KEYWORD_STT,
-    KEYWORD_STB,
-    KEYWORD_LAST
+//     KEYWORD_CALL,
+
+//     KEYWORD_ACCL,
+//     KEYWORD_ACCH,
+//     KEYWORD_ACC,
+//     KEYWORD_BASE, 
+//     KEYWORD_STT,
+//     KEYWORD_STB,
+//     KEYWORD_LAST
+// };
+
+enum REGS
+{
+    REG_ACCL   = 0x0,
+    REG_ACCH   = 0x1,
+    REG_ACCW   = 0x2,
+    REG_BASE   = 0x8,
+    REG_STT    = 0x9,
+    REG_STB    = 0xa,
+    REG_LAST
 };
 
-enum KEYWORD_TYPES
+struct reg_t
 {
-    KEYWORD_TYPE_INSTRUCTION,
-    KEYWORD_TYPE_REGISTER
+    const char *    name;
+    uint32_t        value;
 };
 
-struct keyword_t
+enum OPCODES
 {
-    char *      text;
-    uint16_t    type;
+    OPCODE_MOV,
+    OPCODE_ADD,
+    OPCODE_SUB,
+    OPCODE_MUL,
+    OPCODE_DIV,
+    OPCODE_CMP,
+    OPCODE_AND,
+    OPCODE_OR,
+    OPCODE_XOR,
+    OPCODE_NOT,
+    OPCODE_SHL,
+    OPCODE_SHR,
+    OPCODE_INC,
+    OPCODE_DEC,
+    OPCODE_JMP,
+    OPCODE_JZ,
+    OPCODE_JNZ,
+    OPCODE_CALL,
+    OPCODE_RET,
+    OPCODE_LAST
 };
+
+struct opvariant_t
+{
+    uint8_t opcode[4];
+    uint16_t src_reg;
+    uint16_t dst_reg;
+};
+
+struct opcode_t
+{
+    const char *            name;
+    uint32_t                variant_count;
+    struct opvariant_t *    variants;
+};
+
+struct label_t
+{
+    struct label_t *    next;
+    char *              name;
+    uint16_t            offset;
+};
+
+// enum KEYWORD_TYPES
+// {
+//     KEYWORD_TYPE_INSTRUCTION,
+//     KEYWORD_TYPE_REGISTER
+// };
+
+// struct keyword_t
+// {
+//     char *      text;
+//     uint16_t    type;
+// };
 
 struct token_t
 {
     uint16_t        type;
     uint16_t        token;
+    uint32_t        line;
+    uint32_t        column;
 };
 
 void next_token();
 
 void parse();
+
+void parse_instruction();
 
 void piss(uint32_t level, const char *fmt, ...);
 
