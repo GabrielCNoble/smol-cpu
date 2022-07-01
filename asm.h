@@ -29,6 +29,14 @@ enum TOKEN_TYPE
     TOKEN_TYPE_SPACE            = 0,
 };
 
+enum CONSTANTS 
+{
+    CONSTANT_DECIMAL        = 0,
+    CONSTANT_HEXADECIMAL,
+    CONSTANT_BINARY,
+    CONSTANT_NONE
+};
+
 enum PUNCTUATORS
 {
     PUNCTUATOR_LBRACE = 0,
@@ -61,13 +69,28 @@ enum KEYWORDS
     KEYWORD_ACCL,
     KEYWORD_ACCH,
     KEYWORD_ACC,
+    KEYWORD_BASE, 
+    KEYWORD_STT,
+    KEYWORD_STB,
     KEYWORD_LAST
+};
+
+enum KEYWORD_TYPES
+{
+    KEYWORD_TYPE_INSTRUCTION,
+    KEYWORD_TYPE_REGISTER
+};
+
+struct keyword_t
+{
+    char *      text;
+    uint16_t    type;
 };
 
 struct token_t
 {
-    uint16_t type;
-    uint16_t token;
+    uint16_t        type;
+    uint16_t        token;
 };
 
 void next_token();

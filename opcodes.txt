@@ -8,8 +8,8 @@ reg indexes:
 	6: opcode_latch
 	7: alu_latch
 	8: base
-	9: sp
-	a: bp
+	9: stt
+	a: stb
 	b: flags
 
 alu op indexes:
@@ -94,9 +94,197 @@ uops:
 
 
 
-opcodes:
+
+1 byte opcodes: 
 	0x00: nop (fetch instruction)
 		0x5401 0x0004 0x0110 0x6301
+
+	mov:
+		mov accl, immm8
+		mov accl, acch
+		
+		mov acch, immm8
+		mov acch, accl
+
+		mov acc, imm16
+		mov acc, base
+		mov acc, stt
+		mov acc, stb
+
+		mov base, imm16
+		mov base, acc
+		mov base, stt
+		mov base, stb
+
+		mov stt, imm16
+		mov stt, acc
+		mov stt, base
+		mov stt, stb
+
+		mov stb, stt
+
+	add:
+		add accl, imm8
+		add accl, acch
+
+		add acch, imm8
+		add acch, accl
+
+		add acc, imm16
+		add acc, base
+		add acc, stt
+		add acc, stb
+
+		add base, imm16
+		add base, acc
+		add base, stt
+		add base, stb
+
+		add stt, imm16
+		add stt, acc
+		add stt, base
+
+	sub:
+		sub accl, imm8
+		sub accl, acch
+
+		sub acch, imm8
+		sub acch, accl
+
+		sub acc, imm16
+		sub acc, base
+		sub acc, stt
+		sub acc, stb
+
+		sub base, imm16
+		sub base, stt
+		sub base, stb
+
+		sub stt, imm16
+		sub stt, acc
+		sub stt, base
+
+	mul:
+		mul accl, imm8
+		mul accl, acch
+
+		mul acc, imm16
+		mul acc, base
+
+		mul base, imm16
+		mul base, acc
+
+	div:
+		div accl, imm8
+		div accl, acch
+
+		div acc, imm16
+		div acc, base
+
+		div base, imm16
+		div base, acc
+
+	cmp:
+		cmp accl, imm8
+		cmp accl, acch
+
+		cmp acch, imm8
+		cmp acch, accl
+
+		cmp acc, imm16
+		cmp acc, base
+
+		cmp base, imm16
+		cmp base, acc
+
+	and:
+		and accl, imm8
+		and accl, acch
+
+		and acch, imm8
+		and acch, accl
+
+		and acc, imm16
+		and acc, base
+
+		and base, imm16
+		and base, acc
+
+	or:
+		or accl, imm8
+		or accl, acch
+
+		or acch, imm8
+		or acch, accl
+
+		or acc, imm16
+		or acc, base
+
+		or base, imm16
+		or base, acc
+
+	xor:
+		xor accl, imm8
+		xor accl, acch
+
+		xor acch, imm8
+		xor acch, accl
+
+		xor acc, imm16
+		xor acc, base
+
+		xor base, imm16
+		xor base, acc
+
+	not:
+		not accl
+
+		not acch
+
+		not acc
+
+		not base
+
+	shl:
+		shl accl, imm8
+		shl accl, acch
+
+		shl acch, imm8
+		shl acch, accl
+
+		shl acc, imm16
+		shl acc, base
+
+		shl base, imm16
+		shl base, acc
+
+	shr:
+		shr accl, imm8
+		shr accl, acch
+
+		shr acch, imm8
+		shr acch, accl
+
+		shr acc, imm16
+		shr acc, base
+
+		shr base, imm16
+		shr base, acc
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 	0x01: mov accl, immm8
