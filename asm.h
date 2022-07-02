@@ -132,6 +132,7 @@ struct opvariant_t
 
     uint16_t dst_reg;
     uint16_t dst_flags;
+    uint16_t width; 
 };
 
 #define MAX_OPCODE_VARIANTS 0x20

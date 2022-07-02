@@ -40,14 +40,6 @@ uops:
 	0x0000: (nop) next instruction
 	=====================================
 
-	0x0i10: inc ip
-		i = increment value
-			0 = increment by one
-			1 = increment by two
-
-		step 0: clock ip
-	=====================================
-
 	0xds01: mov reg, reg
 		d = destination register
 		s = source register
@@ -93,6 +85,14 @@ uops:
 
 	=====================================
 
+	0x0i0f: inc ip
+		i = increment value
+			0 = increment by one
+			1 = increment by two
+
+		step 0: clock ip
+	=====================================
+
 
 
 
@@ -101,21 +101,21 @@ uops:
 
 	nop:
 		0x00: nop (fetch instruction)
-			0x5401 0x0004 0x0010 0x6301
+			0x5401 0x0004 0x000f 0x6301
 
 	mov:
 		0x01: mov accl, immm8
-			0x5401 0x0004 0x0301 0x0010
+			0x5401 0x0004 0x0301 0x000f
 		0x02: mov accl, acch
 			0x0101
 		
 		0x03: mov acch, immm8
-			0x5401 0x0004 0x1301 0x0010
+			0x5401 0x0004 0x1301 0x000f
 		0x04: mov acch, accl
 			0x1001
 
 		0x05: mov acc, imm16
-			0x5401 0x0104 0x2301 0x0110
+			0x5401 0x0104 0x2301 0x010f
 		0x06: mov acc, base
 			
 		0x07: mov acc, stt
@@ -301,6 +301,7 @@ uops:
 
 	jumps:
 		0x77: jmp imm16
+			0x5401 0x0104 0x4301
 
 		0x78: jz imm16
 

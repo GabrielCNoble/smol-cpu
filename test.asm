@@ -1,6 +1,6 @@
 mov accl, 0x1
-mov acch, accl
-mov accl, 0x02
+mov acch, 0x2
 mov accw, 0xffff
+jmp 0x0000
 
 

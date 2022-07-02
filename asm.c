@@ -57,28 +57,28 @@ struct opcode_t opcodes[] = {
         .name = "mov",
         .variant_count = 17,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x01, .dst_reg = 1 << REG_ACCL, .src_reg = 0xffff},
-            {.opcode = 0x02, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
+            {.opcode = 0x01, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 0xffff},
+            {.opcode = 0x02, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
 
-            {.opcode = 0x03, .dst_reg = 1 << REG_ACCH, .src_reg = 0xffff},
-            {.opcode = 0x04, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCL},
+            {.opcode = 0x03, .width = 2, .dst_reg = 1 << REG_ACCH, .src_reg = 0xffff},
+            {.opcode = 0x04, .width = 2, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCL},
 
-            {.opcode = 0x05, .dst_reg = 1 << REG_ACCW, .src_reg = 0xffff},
-            {.opcode = 0x06, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
-            {.opcode = 0x07, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STT},
-            {.opcode = 0x08, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STB},
+            {.opcode = 0x05, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 0xffff},
+            {.opcode = 0x06, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x07, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STT},
+            {.opcode = 0x08, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STB},
 
-            {.opcode = 0x09, .dst_reg = 1 << REG_BASE, .src_reg = 0xffff},
-            {.opcode = 0x0a, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW},
-            {.opcode = 0x0b, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STT},
-            {.opcode = 0x0c, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STB},
+            {.opcode = 0x09, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 0xffff},
+            {.opcode = 0x0a, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x0b, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STT},
+            {.opcode = 0x0c, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STB},
 
-            {.opcode = 0x0d, .dst_reg = 1 << REG_STT, .src_reg = 0xffff},
-            {.opcode = 0x0e, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_ACCW},
-            {.opcode = 0x0f, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
-            {.opcode = 0x10, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_STB},
+            {.opcode = 0x0d, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 0xffff},
+            {.opcode = 0x0e, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x0f, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x10, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_STB},
             
-            {.opcode = 0x11, .dst_reg = 1 << REG_STB, .src_reg = 1 << REG_STT},
+            {.opcode = 0x11, .width = 2, .dst_reg = 1 << REG_STB, .src_reg = 1 << REG_STT},
         }
     },
     [OPCODE_ADD]    = {.name = "add"},
@@ -94,7 +94,13 @@ struct opcode_t opcodes[] = {
     [OPCODE_SHR]    = {.name = "shr"},
     [OPCODE_INC]    = {.name = "inc"},
     [OPCODE_DEC]    = {.name = "dec"},
-    [OPCODE_JMP]    = {.name = "jmp"},
+    [OPCODE_JMP]    = {
+        .name = "jmp",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x77, .width = 2, .dst_reg = 0xffff}
+        }
+    },
     [OPCODE_JZ]     = {.name = "jz"},
     [OPCODE_JNZ]    = {.name = "jnz"},
     [OPCODE_CALL]   = {.name = "call"},
@@ -332,8 +338,8 @@ void next_token()
 
             cur_token.type = TOKEN_TYPE_CONSTANT;
             cur_token.token = (uint16_t)constant_value;
-            cur_token.line = line;
-            cur_token.column = column;
+            cur_token.line = start_line;
+            cur_token.column = start_column;
         }
         else
         {
@@ -344,8 +350,8 @@ void next_token()
                 {
                     cur_token.type = TOKEN_TYPE_OPCODE;
                     cur_token.token = index;
-                    cur_token.line = line;
-                    cur_token.column = column;
+                    cur_token.line = start_line;
+                    cur_token.column = start_column;
                     return;
                 }
             }
@@ -357,8 +363,8 @@ void next_token()
                 {
                     cur_token.type = TOKEN_TYPE_REG;
                     cur_token.token = index;
-                    cur_token.line = line;
-                    cur_token.column = column;
+                    cur_token.line = start_line;
+                    cur_token.column = start_column;
                     return;
                 }
             }
@@ -397,7 +403,7 @@ void parse_instruction()
 
     if(cur_token.type == TOKEN_TYPE_REG)
     {
-        /* instruction destination is a register */
+        /* first operand is a register */
         dst_reg = regs + cur_token.token;
         uint16_t reg_index = 1 << dst_reg->value;
 
@@ -411,9 +417,41 @@ void parse_instruction()
             }
         }
     }
+    else if(cur_token.type == TOKEN_TYPE_CONSTANT)
+    {
+        /* first operand is a constant */
+
+        for(uint32_t index = 0; index < variant_count; index++)
+        {
+            if(variant_buffer[index].dst_reg != 0xffff && variant_count)
+            {
+                variant_buffer[index] = variant_buffer[variant_count - 1];
+                variant_count--;
+                index--;
+            }
+        }
+
+        if(!variant_count)
+        {
+            piss(PISS_ERROR, "Invalid first operand at line %d, column %d!", cur_token.line, cur_token.column);
+        }
+
+        emit_opcode(variant_buffer[0].opcode);
+
+        if(variant_buffer[0].width == 1)
+        {
+            emit_byte(cur_token.token);
+        }
+        else
+        {
+            emit_word(cur_token.token);
+        }
+
+        return;
+    }
     else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
     {
-        /* instruction destination is a memory location */
+        /* first operand is a memory location */
     }
     else
     {
@@ -498,7 +536,7 @@ void parse_instruction()
 
         emit_opcode(variant_buffer[0].opcode);
 
-        if(operand_width[dst_reg->value] == 1)
+        if(variant_buffer[0].width == 1)
         {
             emit_byte(cur_token.token);
         }
@@ -548,7 +586,7 @@ void emit_word(uint16_t word)
 
 void emit_opcode(uint16_t opcode)
 {
-    if(opcode & WORD_OPCODE_MASK)
+    if((opcode & WORD_OPCODE_MASK) == WORD_OPCODE_MASK)
     {
         emit_word(opcode);
     }
