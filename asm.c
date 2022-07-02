@@ -104,17 +104,20 @@ struct opcode_t opcodes[] = {
     [OPCODE_JZ]     = {.name = "jz"},
     [OPCODE_JNZ]    = {.name = "jnz"},
     [OPCODE_CALL]   = {.name = "call"},
-    [OPCODE_RET]    = {.name = "ret"}
+    [OPCODE_RET]    = {.name = "ret"},
+    [OPCODE_PUSH]   = {.name = "push"},
+    [OPCODE_POP]    = {.name = "pop"}
 };
 
 struct opvariant_t variant_buffer[MAX_OPCODE_VARIANTS];
 
 const char punctuators[] = {
     [PUNCTUATOR_COMMA]      = ',',
+    [PUNCTUATOR_COLLON]     = ':',
     [PUNCTUATOR_LBRACE]     = '[',
     [PUNCTUATOR_RBRACE]     = ']',
     [PUNCTUATOR_PLUS]       = '+',
-    [PUNCTUATOR_MINUS]      = '-'
+    [PUNCTUATOR_MINUS]      = '-',
 };
 
 const char map[] = {
@@ -187,7 +190,8 @@ const char map[] = {
     ['-'] = CHAR_TYPE_PUNCTUATOR,
     ['['] = CHAR_TYPE_PUNCTUATOR,
     [']'] = CHAR_TYPE_PUNCTUATOR,
-    [','] = CHAR_TYPE_PUNCTUATOR
+    [','] = CHAR_TYPE_PUNCTUATOR,
+    [':'] = CHAR_TYPE_PUNCTUATOR
 };
 
 uint32_t line_source_offset = 0;
@@ -203,6 +207,13 @@ struct token_t cur_token = {
 
 struct code_buffer_t *output_buffer = NULL;
 struct code_buffer_t *cur_buffer = NULL;
+uint32_t output_offset = 0;
+
+struct label_t *labels = NULL;
+struct label_t *last_label = NULL;
+
+struct label_t *patches = NULL;
+struct label_t *last_patch = NULL;
 
 void next_token()
 {
@@ -253,6 +264,10 @@ void next_token()
             case '-':
                 cur_token.token = PUNCTUATOR_MINUS;
             break;
+
+            case ':':
+                cur_token.token = PUNCTUATOR_COLLON;
+            break;
         }
 
         cur_token.line = line;
@@ -267,6 +282,7 @@ void next_token()
         uint32_t constant_type = CONSTANT_NONE;
         uint32_t start_column = column;
         uint32_t start_line = line;
+        uint32_t start_offset = source_offset;
         while(source_offset < source_len && token_text_cursor < sizeof(token_text) && 
                 map[source[source_offset]] != TOKEN_TYPE_SPACE && map[source[source_offset]] != TOKEN_TYPE_PUNCTUATOR)
         {
@@ -308,6 +324,8 @@ void next_token()
         }
 
         token_text[token_text_cursor] = '\0';
+        cur_token.line = start_line;
+        cur_token.column = start_column;
 
         if(constant_type != CONSTANT_NONE)
         {
@@ -338,11 +356,10 @@ void next_token()
 
             cur_token.type = TOKEN_TYPE_CONSTANT;
             cur_token.token = (uint16_t)constant_value;
-            cur_token.line = start_line;
-            cur_token.column = start_column;
         }
         else
         {
+            
             /* test all opcodes */
             for(uint32_t index = 0; index < OPCODE_LAST; index++)
             {
@@ -350,8 +367,6 @@ void next_token()
                 {
                     cur_token.type = TOKEN_TYPE_OPCODE;
                     cur_token.token = index;
-                    cur_token.line = start_line;
-                    cur_token.column = start_column;
                     return;
                 }
             }
@@ -363,14 +378,18 @@ void next_token()
                 {
                     cur_token.type = TOKEN_TYPE_REG;
                     cur_token.token = index;
-                    cur_token.line = start_line;
-                    cur_token.column = start_column;
                     return;
                 }
             }
 
+            cur_token.type = TOKEN_TYPE_NAME;
+            cur_token.token = start_offset;
+            cur_token.length = token_text_cursor;
+            // printf("%c\n", source[start_column]);
+            return;
+
             /* identifiers/labels would be handled here */
-            piss(PISS_ERROR, "Unknown keyword [%s] at line %d, column %d!", token_text, start_line, start_column);
+            // piss(PISS_ERROR, "Unknown keyword [%s] at line %d, column %d!", token_text, start_line, start_column);
         }
     }
 }
@@ -384,6 +403,10 @@ void parse()
         if(cur_token.type == TOKEN_TYPE_OPCODE)
         {
             parse_instruction();
+        }
+        else if(cur_token.type == TOKEN_TYPE_NAME)
+        {
+            parse_label();
         }
     }
 }
@@ -417,9 +440,10 @@ void parse_instruction()
             }
         }
     }
-    else if(cur_token.type == TOKEN_TYPE_CONSTANT)
+    else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
     {
-        /* first operand is a constant */
+        /* first operand is a constant or a label */
+        uint16_t constant = 0;
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
@@ -438,13 +462,32 @@ void parse_instruction()
 
         emit_opcode(variant_buffer[0].opcode);
 
-        if(variant_buffer[0].width == 1)
+        if(cur_token.type == TOKEN_TYPE_NAME)
         {
-            emit_byte(cur_token.token);
+            struct label_t *label = find_label_from_token(&cur_token);
+
+            if(label)
+            {
+                constant = label->offset;
+                printf("found label %s, at offset %x\n", label->name, label->offset);
+            }
+            else
+            {
+                create_patch(&cur_token, output_offset);
+            }
         }
         else
         {
-            emit_word(cur_token.token);
+            constant = cur_token.token;
+        }
+
+        if(variant_buffer[0].width == 1)
+        {
+            emit_byte(constant);
+        }
+        else
+        {
+            emit_word(constant);
         }
 
         return;
@@ -555,6 +598,18 @@ void parse_instruction()
     }
 }
 
+void parse_label()
+{
+    struct token_t label_token = cur_token;
+    next_token();
+    if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_COLLON)
+    {
+        /* this is a label */
+        struct label_t *label = create_label(&label_token, output_offset);
+        printf("created label %s, at offset %x\n", label->name, label->offset);
+    }
+}
+
 void emit_byte(uint8_t byte)
 {
     if(!output_buffer)
@@ -575,6 +630,8 @@ void emit_byte(uint8_t byte)
         cur_buffer = new_buffer;
     }
 
+    output_offset++;
+
     // printf("%x", byte);
 }
 
@@ -594,6 +651,110 @@ void emit_opcode(uint16_t opcode)
     {
         emit_byte((uint8_t)opcode);
     }
+}
+
+void patch_code()
+{
+    struct code_buffer_t *code_buffer = output_buffer;
+    uint32_t code_offset = CODE_BUFFER_SIZE;
+
+    struct label_t *patch = patches;
+
+    while(patch)
+    {
+        struct label_t *label = find_label(patch->name);
+
+        if(!label)
+        {
+            piss(PISS_ERROR, "Undefined label %s!", patch->name);
+        }
+
+        while(code_offset < patch->offset)
+        {
+            code_offset += code_buffer->offset;
+            code_buffer = code_buffer->next;
+        }
+
+        uint32_t patch_offset = patch->offset % CODE_BUFFER_SIZE;
+        code_buffer->data[patch_offset] = (uint8_t)label->offset;
+        code_buffer->data[patch_offset + 1] = (uint8_t)(label->offset >> 8);
+
+        patch = patch->next;
+    }
+}
+
+struct label_t *create_label_on_list(char *name, uint16_t name_len, uint16_t offset, struct label_t **first, struct label_t **last)
+{
+    struct label_t *label = calloc(1, sizeof(struct label_t *));
+
+    if(name_len)
+    {
+        label->name = calloc(name_len + 1, 1);
+        strncpy(label->name, name, name_len);
+        label->name[name_len] = '\0';
+    }
+    else
+    {
+        label->name = strdup(name);
+    }
+    label->offset = offset;
+
+    if(!(*first))
+    {
+        *first = label;
+    }
+    else
+    {
+        (*last)->next = label;
+    }
+
+    *last = label;
+    return label;
+}
+
+struct label_t *create_label(struct token_t *token, uint16_t offset)
+{
+    return create_label_on_list(source + token->token, token->length, offset, &labels, &last_label);
+}
+
+struct label_t *create_patch(struct token_t *token, uint16_t offset)
+{
+    return create_label_on_list(source + token->token, token->length, offset, &patches, &last_patch);
+}
+
+struct label_t *find_label_from_token(struct token_t *token)
+{
+    struct label_t *label = labels;
+    char *name = source + token->token;
+
+    while(label)
+    {
+        if(!strncmp(label->name, name, token->length))
+        {
+            break;
+        }
+
+        label = label->next;
+    }
+
+    return label;
+}
+
+struct label_t *find_label(char *name)
+{
+    struct label_t *label = labels;
+
+    while(label)
+    {
+        if(!strcmp(label->name, name))
+        {
+            break;
+        }
+
+        label = label->next;
+    }
+
+    return label;
 }
 
 void piss(uint32_t level, const char *fmt, ...)
@@ -692,6 +853,7 @@ int main(int argc, char *argv[])
 
         source_len = strlen(source) + 1;
         parse();
+        patch_code();
 
         if(output)
         {
@@ -705,6 +867,24 @@ int main(int argc, char *argv[])
             }
 
             fclose(output_file);
+
+            struct label_t *label = labels;
+            while(label)
+            {
+                struct label_t *next_label = label->next;
+                free(label->name);
+                free(label);
+                label = next_label;
+            }
+
+            buffer = output_buffer;
+            while(buffer)
+            {
+                struct code_buffer_t *next_buffer = buffer->next;
+                free(buffer->data);
+                free(buffer);
+                buffer = buffer->next;
+            }
         }
         else
         {

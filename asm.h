@@ -25,6 +25,7 @@ enum TOKEN_TYPE
     TOKEN_TYPE_REG,
     TOKEN_TYPE_OPCODE,
     TOKEN_TYPE_CONSTANT,
+    TOKEN_TYPE_NAME,
 };
 
 enum CONSTANTS 
@@ -40,41 +41,11 @@ enum PUNCTUATORS
     PUNCTUATOR_LBRACE = 0,
     PUNCTUATOR_RBRACE,
     PUNCTUATOR_COMMA,
+    PUNCTUATOR_COLLON,
     PUNCTUATOR_PLUS,
     PUNCTUATOR_MINUS,
     PUNCTUATOR_LAST
 };
-
-// enum KEYWORDS
-// {
-//     KEYWORD_MOV = 0,
-//     KEYWORD_ADD,
-//     KEYWORD_SUB,
-//     KEYWORD_MUL,
-//     KEYWORD_DIV,
-//     KEYWORD_CMP,
-//     KEYWORD_AND,
-//     KEYWORD_OR,
-//     KEYWORD_XOR,
-//     KEYWORD_NOT,
-//     KEYWORD_SHL,
-//     KEYWORD_SHR,
-//     KEYWORD_JMP,
-//     KEYWORD_JZ,
-//     KEYWORD_JNZ,
-//     KEYWORD_JE,
-//     KEYWORD_JNE,
-
-//     KEYWORD_CALL,
-
-//     KEYWORD_ACCL,
-//     KEYWORD_ACCH,
-//     KEYWORD_ACC,
-//     KEYWORD_BASE, 
-//     KEYWORD_STT,
-//     KEYWORD_STB,
-//     KEYWORD_LAST
-// };
 
 enum REGS
 {
@@ -115,13 +86,14 @@ enum OPCODES
     OPCODE_JNZ,
     OPCODE_CALL,
     OPCODE_RET,
+    OPCODE_PUSH,
+    OPCODE_POP,
     OPCODE_LAST
 };
 
 enum OPERAND_FLAGS
 {
     OPERAND_FLAG_INDIRECT = 1,
-    OPERAND_FLAG_CONSTANT = 1 << 1
 };
 
 struct opvariant_t
@@ -158,27 +130,13 @@ struct code_buffer_t
     uint8_t *                   data;
 };
 
-
-#define indexof(array, element) ((element - array) / sizeof(array[0]))
-
-// enum KEYWORD_TYPES
-// {
-//     KEYWORD_TYPE_INSTRUCTION,
-//     KEYWORD_TYPE_REGISTER
-// };
-
-// struct keyword_t
-// {
-//     char *      text;
-//     uint16_t    type;
-// };
-
 struct token_t
 {
-    uint16_t        type;
-    uint16_t        token;
     uint32_t        line;
     uint32_t        column;
+    uint32_t        type;
+    uint32_t        token;
+    uint32_t        length;
 };
 
 void next_token();
@@ -187,11 +145,25 @@ void parse();
 
 void parse_instruction();
 
+void parse_label();
+
 void emit_byte(uint8_t byte);
 
 void emit_word(uint16_t word);
 
 void emit_opcode(uint16_t opcode);
+
+void patch_code();
+
+struct label_t *create_label_on_list(char *name, uint16_t name_len, uint16_t offset, struct label_t **first, struct label_t **last);
+
+struct label_t *create_label(struct token_t *token, uint16_t offset);
+
+struct label_t *create_patch(struct token_t *token, uint16_t offset);
+
+struct label_t *find_label_from_token(struct token_t *token);
+
+struct label_t *find_label(char *name);
 
 void piss(uint32_t level, const char *fmt, ...);
 
