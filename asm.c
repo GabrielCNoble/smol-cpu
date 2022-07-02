@@ -4,35 +4,6 @@
 #include <string.h>
 #include "asm.h"
 
-
-// struct keyword_t keywords[] = {
-//     [KEYWORD_MOV]   = {.text = "mov", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_ADD]   = {.text = "add", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_SUB]   = {.text = "sub", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_MUL]   = {.text = "mul", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_DIV]   = {.text = "div", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_CMP]   = {.text = "cmp", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_AND]   = {.text = "and", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_OR]    = {.text = "or", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_XOR]   = {.text = "xor", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_NOT]   = {.text = "not", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_SHL]   = {.text = "shl", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_SHR]   = {.text = "shr", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_JMP]   = {.text = "jmp", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_JZ]    = {.text = "jz", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_JNZ]   = {.text = "jnz", .type = KEYWORD_TYPE_INSTRUCTION},
-//     [KEYWORD_JE]    = {.text = "je", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_JNE]   = {.text = "jne", .type = KEYWORD_TYPE_INSTRUCTION },
-//     [KEYWORD_CALL]  = {.text = "call", .type = KEYWORD_TYPE_INSTRUCTION},
-
-//     [KEYWORD_ACCL]  = {.text = "accl", .type = KEYWORD_TYPE_REGISTER },
-//     [KEYWORD_ACCH]  = {.text = "acch", .type = KEYWORD_TYPE_REGISTER },
-//     [KEYWORD_ACC]   = {.text = "acc", .type = KEYWORD_TYPE_REGISTER },
-//     [KEYWORD_BASE]  = {.text = "base", .type = KEYWORD_TYPE_REGISTER },
-//     [KEYWORD_STT]    = {.text = "stt", .type = KEYWORD_TYPE_REGISTER },
-//     [KEYWORD_STB]    = {.text = "stb", .type = KEYWORD_TYPE_REGISTER }
-// };
-
 struct reg_t regs[] = {
     {.name = "accl", .value = REG_ACCL},
     {.name = "acch", .value = REG_ACCH},
@@ -81,13 +52,54 @@ struct opcode_t opcodes[] = {
             {.opcode = 0x11, .width = 2, .dst_reg = 1 << REG_STB, .src_reg = 1 << REG_STT},
         }
     },
-    [OPCODE_ADD]    = {.name = "add"},
+    [OPCODE_ADD]    = {
+        .name = "add",
+        .variant_count = 15,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x12, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 0xffff},
+            {.opcode = 0x13, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
+
+            {.opcode = 0x14, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 0xffff},
+            {.opcode = 0x15, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCL},
+
+            {.opcode = 0x16, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 0xffff},
+            {.opcode = 0x17, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x18, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STT},
+            {.opcode = 0x19, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x1a, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 0xffff},
+            {.opcode = 0x1b, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x1c, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STT},
+            {.opcode = 0x1d, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x1e, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 0xffff},
+            {.opcode = 0x1f, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x20, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
+        }
+    },
     [OPCODE_SUB]    = {.name = "sub"},
     [OPCODE_MUL]    = {.name = "mul"},
     [OPCODE_DIV]    = {.name = "div"},
-    [OPCODE_CMP]    = {.name = "cmp"},
+    [OPCODE_CMP]    = {
+        .name = "cmp",
+        .variant_count = 8,
+        .variants = (struct opvariant_t[]) {
+            {.opcode = 0x3b, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 0xffff},
+            {.opcode = 0x3c, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
+
+            {.opcode = 0x3d, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 0xffff},
+            {.opcode = 0x3e, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCH},
+
+            {.opcode = 0x3f, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 0xffff},
+            {.opcode = 0x40, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
+
+            {.opcode = 0x41, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 0xffff},
+            {.opcode = 0x42, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW}
+        }
+    },
     [OPCODE_AND]    = {.name = "and"},
     [OPCODE_OR]     = {.name = "or"},
+    
     [OPCODE_XOR]    = {.name = "xor"},
     [OPCODE_NOT]    = {.name = "not"},
     [OPCODE_SHL]    = {.name = "shl"},
@@ -883,7 +895,7 @@ int main(int argc, char *argv[])
                 struct code_buffer_t *next_buffer = buffer->next;
                 free(buffer->data);
                 free(buffer);
-                buffer = buffer->next;
+                buffer = next_buffer;
             }
         }
         else
