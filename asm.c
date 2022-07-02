@@ -113,7 +113,13 @@ struct opcode_t opcodes[] = {
             {.opcode = 0x77, .width = 2, .dst_reg = 0xffff}
         }
     },
-    [OPCODE_JZ]     = {.name = "jz"},
+    [OPCODE_JZ]     = {
+        .name = "jz",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x78, .width = 2, .dst_reg = 0xffff}
+        }
+    },
     [OPCODE_JNZ]    = {.name = "jnz"},
     [OPCODE_CALL]   = {.name = "call"},
     [OPCODE_RET]    = {.name = "ret"},
@@ -296,39 +302,47 @@ void next_token()
         uint32_t start_line = line;
         uint32_t start_offset = source_offset;
         while(source_offset < source_len && token_text_cursor < sizeof(token_text) && 
-                map[source[source_offset]] != TOKEN_TYPE_SPACE && map[source[source_offset]] != TOKEN_TYPE_PUNCTUATOR)
+                map[source[source_offset]] != CHAR_TYPE_SPACE && map[source[source_offset]] != CHAR_TYPE_PUNCTUATOR)
         {
             token_text[token_text_cursor] = source[source_offset];
 
-            if(!token_text_cursor)
-            {
-                if(map[token_text[token_text_cursor]] == TOKEN_TYPE_CONSTANT)
-                {
-                    maybe_constant = 1;
-                }
-            }
-            else if(maybe_constant)
-            {
-                if(token_text_cursor == 1)
-                {
-                    if(token_text[token_text_cursor] == 'b' || token_text[token_text_cursor] == 'B')
-                    {
-                        constant_type = CONSTANT_BINARY;
-                    }
-                    else if(token_text[token_text_cursor] == 'x' || token_text[token_text_cursor] == 'X')
-                    {
-                        constant_type = CONSTANT_HEXADECIMAL;
-                    }
-                    else if(map[token_text[token_text_cursor]] == TOKEN_TYPE_CONSTANT)
-                    {
-                        constant_type = CONSTANT_DECIMAL;
-                    }
-                    else
-                    {
-                        piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", line, column);
-                    }
-                }
-            }
+            // if(!token_text_cursor)
+            // {
+            //     if(map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT)
+            //     {
+            //         maybe_constant = 1;
+            //     }
+            // }
+            // else if(maybe_constant)
+            // {
+            //     if(token_text_cursor == 1)
+            //     {
+            //         if(token_text[token_text_cursor] == 'b' || token_text[token_text_cursor] == 'B')
+            //         {
+            //             constant_type = CONSTANT_BINARY;
+            //         }
+            //         else if(token_text[token_text_cursor] == 'x' || token_text[token_text_cursor] == 'X')
+            //         {
+            //             constant_type = CONSTANT_HEXADECIMAL;
+            //         }
+            //         else if((map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT) && 
+            //                 map[token_text[token_text_cursor - 1]] == CHAR_TYPE_CONSTANT)
+            //         {
+            //             constant_type = CONSTANT_DECIMAL;
+            //         }
+            //         else
+            //         {
+            //             maybe_constant = 0;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         if(!(map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT))
+            //         {
+            //             piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
+            //         }
+            //     }
+            // }
 
             source_offset++;
             token_text_cursor++;
@@ -338,6 +352,39 @@ void next_token()
         token_text[token_text_cursor] = '\0';
         cur_token.line = start_line;
         cur_token.column = start_column;
+
+        if(map[token_text[0]] & CHAR_TYPE_CONSTANT)
+        {
+            if(token_text[0] == '0' && (token_text[1] == 'b' || token_text[1] == 'B') && token_text_cursor > 2)
+            {
+                /* binary constants starts with a 0b, and may be valid only if there's at least one character after
+                the prefix */
+                constant_type = CONSTANT_BINARY;
+            }
+            else if(token_text[0] == '0' && (token_text[1] == 'x' || token_text[1] == 'X') && token_text_cursor > 2)
+            {
+                /* hex constants starts with a 0x, and may be valid only if there's at least one character after
+                the prefix */
+                constant_type = CONSTANT_HEXADECIMAL;
+            }
+            else if(map[token_text[0]] == CHAR_TYPE_CONSTANT)
+            {
+                constant_type = CONSTANT_DECIMAL;
+            }
+            
+            if(constant_type != CONSTANT_NONE)
+            {
+                for(uint32_t index = 1; index < token_text_cursor; index++)
+                {
+                    if(!(map[token_text[index]] & CHAR_TYPE_CONSTANT))
+                    {
+                        piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
+                    }
+                }
+            }
+        }
+
+
 
         if(constant_type != CONSTANT_NONE)
         {
@@ -414,6 +461,7 @@ void parse()
 
         if(cur_token.type == TOKEN_TYPE_OPCODE)
         {
+            
             parse_instruction();
         }
         else if(cur_token.type == TOKEN_TYPE_NAME)
@@ -431,10 +479,13 @@ void parse_instruction()
 
     struct reg_t *dst_reg = NULL;
     uint32_t single_operand = 0;
+    // printf("%x\n", cur_token.type);
     next_token();
 
     memcpy(variant_buffer, opcode->variants, sizeof(struct opvariant_t) * opcode->variant_count);
     uint32_t variant_count = opcode->variant_count;
+
+    // printf("%x\n", cur_token.type);
 
     if(cur_token.type == TOKEN_TYPE_REG)
     {
@@ -451,6 +502,7 @@ void parse_instruction()
                 index--;
             }
         }
+
     }
     else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
     {
@@ -481,7 +533,6 @@ void parse_instruction()
             if(label)
             {
                 constant = label->offset;
-                printf("found label %s, at offset %x\n", label->name, label->offset);
             }
             else
             {
@@ -618,7 +669,6 @@ void parse_label()
     {
         /* this is a label */
         struct label_t *label = create_label(&label_token, output_offset);
-        printf("created label %s, at offset %x\n", label->name, label->offset);
     }
 }
 
