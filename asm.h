@@ -93,6 +93,7 @@ struct reg_t
     uint32_t        value;
 };
 
+#define WORD_OPCODE_MASK 0xc0
 enum OPCODES
 {
     OPCODE_MOV,
@@ -117,13 +118,23 @@ enum OPCODES
     OPCODE_LAST
 };
 
-struct opvariant_t
+enum OPERAND_FLAGS
 {
-    uint8_t opcode[4];
-    uint16_t src_reg;
-    uint16_t dst_reg;
+    OPERAND_FLAG_INDIRECT = 1,
+    OPERAND_FLAG_CONSTANT = 1 << 1
 };
 
+struct opvariant_t
+{
+    uint16_t opcode;
+    uint16_t src_reg;
+    uint16_t src_flags;
+
+    uint16_t dst_reg;
+    uint16_t dst_flags;
+};
+
+#define MAX_OPCODE_VARIANTS 0x20
 struct opcode_t
 {
     const char *            name;
@@ -137,6 +148,17 @@ struct label_t
     char *              name;
     uint16_t            offset;
 };
+
+#define CODE_BUFFER_SIZE 4096
+struct code_buffer_t
+{
+    struct code_buffer_t *      next;
+    uint32_t                    offset;
+    uint8_t *                   data;
+};
+
+
+#define indexof(array, element) ((element - array) / sizeof(array[0]))
 
 // enum KEYWORD_TYPES
 // {
@@ -163,6 +185,12 @@ void next_token();
 void parse();
 
 void parse_instruction();
+
+void emit_byte(uint8_t byte);
+
+void emit_word(uint16_t word);
+
+void emit_opcode(uint16_t opcode);
 
 void piss(uint32_t level, const char *fmt, ...);
 

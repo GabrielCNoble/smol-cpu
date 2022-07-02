@@ -1,5 +1,6 @@
-mov accl, acch
-mov acc, base
-mov acc, acc
-mov acc, 0x1000
-mov 0x1000, acc
+mov accl, 0x1
+mov acch, accl
+mov accl, 0x02
+mov accw, 0xffff
+
+

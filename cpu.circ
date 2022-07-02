@@ -706,7 +706,9 @@
       <a name="addrWidth" val="12"/>
       <a name="appearance" val="logisim_evolution"/>
       <a name="contents">addr/data: 12 16
-5401 4 10 6301
+5401 4 10 6301 12*0 5401 4 301
+10 12*0 101 15*0 5401 4 1301 10
+12*0 1001 15*0 5401 104 2301 110
 </a>
       <a name="dataWidth" val="16"/>
     </comp>
