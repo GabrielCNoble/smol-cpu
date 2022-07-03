@@ -77,7 +77,31 @@ struct opcode_t opcodes[] = {
             {.opcode = 0x20, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
         }
     },
-    [OPCODE_SUB]    = {.name = "sub"},
+    [OPCODE_SUB]    = {
+        .name = "sub",
+        .variant_count = 15,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x21, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 0xffff},
+            {.opcode = 0x22, .width = 1, .dst_reg = 1 << REG_ACCL, .src_reg = 1 << REG_ACCH},
+
+            {.opcode = 0x23, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 0xffff},
+            {.opcode = 0x24, .width = 1, .dst_reg = 1 << REG_ACCH, .src_reg = 1 << REG_ACCL},
+
+            {.opcode = 0x25, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 0xffff},
+            {.opcode = 0x26, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_BASE},
+            {.opcode = 0x27, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STT},
+            {.opcode = 0x28, .width = 2, .dst_reg = 1 << REG_ACCW, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x29, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 0xffff},
+            {.opcode = 0x2a, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x2b, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STT},
+            {.opcode = 0x2c, .width = 2, .dst_reg = 1 << REG_BASE, .src_reg = 1 << REG_STB},
+
+            {.opcode = 0x2d, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 0xffff},
+            {.opcode = 0x2e, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_ACCW},
+            {.opcode = 0x2f, .width = 2, .dst_reg = 1 << REG_STT, .src_reg = 1 << REG_BASE},
+        }
+    },
     [OPCODE_MUL]    = {.name = "mul"},
     [OPCODE_DIV]    = {.name = "div"},
     [OPCODE_CMP]    = {
