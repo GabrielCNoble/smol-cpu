@@ -193,6 +193,8 @@ const char map[] = {
     ['Y'] = CHAR_TYPE_KEYWORD,
     ['Z'] = CHAR_TYPE_KEYWORD,
 
+    ['_'] = CHAR_TYPE_KEYWORD,
+
     ['0'] = CHAR_TYPE_CONSTANT,
     ['1'] = CHAR_TYPE_CONSTANT,
     ['2'] = CHAR_TYPE_CONSTANT,

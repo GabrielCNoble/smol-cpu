@@ -55,7 +55,7 @@ uops:
 		step 0: enable memory output buffer
 		step 1: assert memory clock, enable addr_latch writes
 
-		if w = 1
+		if w = 1	
 
 		step 2: deassert memory clock, select data_latch high byte, assert addr_latch clock
 		step 3: assert memory clock
@@ -333,6 +333,12 @@ uops:
 		0x78: jz imm16
 			0x5401 0x0104 0x010f 0x0106 0x4301
 		0x79: jnz imm16
+
+		jc
+
+		jnc
+
+		
 
 		call imm16
 
