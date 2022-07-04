@@ -1,8 +1,10 @@
-mov accw, 0xffff
+mov stt, 0x100
+start:
+mov accw, 0x1
+call test_func
+jmp start
+test_func:
 add accw, 0x1
-mov accw, 0x7fff
-add accw, 0x1
-mov accw, 0xffff
-sub accw, 0x1
-mov accw, 0x8000
-sub accw, 0x1
+ret    
+
+

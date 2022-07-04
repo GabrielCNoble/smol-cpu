@@ -11,6 +11,7 @@ reg indexes:
 	9: stt
 	a: stb
 	b: flags
+	c: prev_ip
 
 alu op indexes:
 	0: add
@@ -68,8 +69,8 @@ uops:
 			0 = byte
 			1 = word
 
-		step 0: assert output enable and enable memory input buffer
-		step 1: assert memory clock and enable writes to data_latch (low byte will be selected)
+		step 0: assert output enable and memory clock
+		step 1: enable memory input buffer and enable writes to data_latch (low byte will be selected)
 		step 2: assert data_latch clock, enable addr_latch writes
 
 		if w = 1
@@ -90,6 +91,13 @@ uops:
 		ff = flags
 			0-6 = flags to test
 			7 = when 0, all flags must be present. When 1, at least one must be present
+
+	=====================================
+
+	0x0o07: stt increment/decrement
+		o = operation
+			0 = decrement by 2
+			1 = increment by 2
 
 	=====================================
 
@@ -334,19 +342,30 @@ uops:
 		0x77: jmp imm16
 			0x5401 0x0104 0x4301
 
-		0x78: jz imm16
-			0x5401 0x0104 0x010f 0x0106 0x4301
-		0x79: jnz imm16
+		0x78: jz/je imm16
+			0x5401 0x010f 0x0106 0x0104 0x4301
+		0x79: jnz/jne imm16
 
-		jc
+		0x80: ja/jnbe imm16
 
-		jnc
+		0x81: jna/jbe imm16
+
+		0x82: jae/jnb/jnc imm16
+
+		0x83: jnae/jb/jc imm16
+
+		0x84: jl/jnge imm16
+
+		0x85: jg/jnl imm16
 
 
 
-		call imm16
+		0x87: call imm16
+			0x5401 0x0104 0x010f 0x4301 0x0007 0x5901 0x3c01 0x0103
 
-		ret
+		0x88: ret
+			0x5901 0x0104 0x4301 0x0107
+
 
 	push:
 		push imm8

@@ -145,8 +145,20 @@ struct opcode_t opcodes[] = {
         }
     },
     [OPCODE_JNZ]    = {.name = "jnz"},
-    [OPCODE_CALL]   = {.name = "call"},
-    [OPCODE_RET]    = {.name = "ret"},
+    [OPCODE_CALL]   = {
+        .name = "call",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x87, .width = 2, .dst_reg = 0xffff}
+        }
+    },
+    [OPCODE_RET]    = {
+        .name = "ret",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = 0x88, .width = 2, .dst_reg = 0xffff}
+        }
+    },
     [OPCODE_PUSH]   = {.name = "push"},
     [OPCODE_POP]    = {.name = "pop"}
 };
@@ -331,45 +343,6 @@ void next_token()
                 map[source[source_offset]] != CHAR_TYPE_SPACE && map[source[source_offset]] != CHAR_TYPE_PUNCTUATOR)
         {
             token_text[token_text_cursor] = source[source_offset];
-
-            // if(!token_text_cursor)
-            // {
-            //     if(map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT)
-            //     {
-            //         maybe_constant = 1;
-            //     }
-            // }
-            // else if(maybe_constant)
-            // {
-            //     if(token_text_cursor == 1)
-            //     {
-            //         if(token_text[token_text_cursor] == 'b' || token_text[token_text_cursor] == 'B')
-            //         {
-            //             constant_type = CONSTANT_BINARY;
-            //         }
-            //         else if(token_text[token_text_cursor] == 'x' || token_text[token_text_cursor] == 'X')
-            //         {
-            //             constant_type = CONSTANT_HEXADECIMAL;
-            //         }
-            //         else if((map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT) && 
-            //                 map[token_text[token_text_cursor - 1]] == CHAR_TYPE_CONSTANT)
-            //         {
-            //             constant_type = CONSTANT_DECIMAL;
-            //         }
-            //         else
-            //         {
-            //             maybe_constant = 0;
-            //         }
-            //     }
-            //     else
-            //     {
-            //         if(!(map[token_text[token_text_cursor]] & CHAR_TYPE_CONSTANT))
-            //         {
-            //             piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
-            //         }
-            //     }
-            // }
-
             source_offset++;
             token_text_cursor++;
             column++;
@@ -427,7 +400,11 @@ void next_token()
                 break;
 
                 case CONSTANT_BINARY:
-                    /* get rid of the 0b prefix, since strtol won't accept it */
+                    /* 
+                        get rid of the 0b prefix, since strtol won't accept it 
+                        TODO: don't be lazy, drop the prefix when checking the constant type
+                    */
+
                     token_text[0] = ' ';
                     token_text[1] = ' ';
                     constant_value = strtol(token_text, NULL, 2);
@@ -470,11 +447,8 @@ void next_token()
             cur_token.type = TOKEN_TYPE_NAME;
             cur_token.token = start_offset;
             cur_token.length = token_text_cursor;
-            // printf("%c\n", source[start_column]);
-            return;
 
-            /* identifiers/labels would be handled here */
-            // piss(PISS_ERROR, "Unknown keyword [%s] at line %d, column %d!", token_text, start_line, start_column);
+            return;
         }
     }
 }
@@ -487,7 +461,6 @@ void parse()
 
         if(cur_token.type == TOKEN_TYPE_OPCODE)
         {
-            
             parse_instruction();
         }
         else if(cur_token.type == TOKEN_TYPE_NAME)
@@ -510,8 +483,6 @@ void parse_instruction()
 
     memcpy(variant_buffer, opcode->variants, sizeof(struct opvariant_t) * opcode->variant_count);
     uint32_t variant_count = opcode->variant_count;
-
-    // printf("%x\n", cur_token.type);
 
     if(cur_token.type == TOKEN_TYPE_REG)
     {
@@ -587,7 +558,26 @@ void parse_instruction()
     }
     else
     {
-        piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
+        /* instruction may not take any operands */
+        uint16_t constant = 0;
+
+        for(uint32_t index = 0; index < variant_count; index++)
+        {
+            if(variant_buffer[index].dst_reg != 0xffff && variant_count)
+            {
+                variant_buffer[index] = variant_buffer[variant_count - 1];
+                variant_count--;
+                index--;
+            }
+        }
+
+        if(!variant_count)
+        {
+            piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
+        }
+
+        emit_opcode(variant_buffer[0].opcode);
+        return;
     }
 
     next_token();
@@ -679,7 +669,7 @@ void parse_instruction()
     }
     else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
     {
-
+        /* second operand is a memory location */
     }
     else
     {
