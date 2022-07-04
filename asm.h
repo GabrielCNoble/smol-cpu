@@ -15,6 +15,7 @@ enum CHAR_TYPE
     CHAR_TYPE_PUNCTUATOR       = 1,
     CHAR_TYPE_KEYWORD          = 1 << 1,
     CHAR_TYPE_CONSTANT         = 1 << 2,
+    CHAR_TYPE_LITERAL          = 1 << 3,
     CHAR_TYPE_SPACE            = 0,
 };
 
@@ -25,6 +26,8 @@ enum TOKEN_TYPE
     TOKEN_TYPE_REG,
     TOKEN_TYPE_OPCODE,
     TOKEN_TYPE_CONSTANT,
+    TOKEN_TYPE_LITERAL,
+    TOKEN_TYPE_KEYWORD,
     TOKEN_TYPE_NAME,
 };
 
@@ -33,6 +36,7 @@ enum CONSTANTS
     CONSTANT_DECIMAL        = 0,
     CONSTANT_HEXADECIMAL,
     CONSTANT_BINARY,
+    CONSTANT_CHAR,
     CONSTANT_NONE
 };
 
@@ -40,11 +44,22 @@ enum PUNCTUATORS
 {
     PUNCTUATOR_LBRACE = 0,
     PUNCTUATOR_RBRACE,
+    PUNCTUATOR_LPARENTHESIS,
+    PUNCTUATOR_RPARENTHESIS,
+    PUNCTUATOR_DOT,
     PUNCTUATOR_COMMA,
     PUNCTUATOR_COLLON,
     PUNCTUATOR_PLUS,
     PUNCTUATOR_MINUS,
     PUNCTUATOR_LAST
+};
+
+enum KEYWORDS
+{
+    KEYWORD_STRING = 0,
+    KEYWORD_BYTE,
+    KEYWORD_WORD,
+    KEYWORD_LAST,
 };
 
 enum REGS
@@ -122,12 +137,12 @@ struct label_t
     uint16_t            offset;
 };
 
-#define CODE_BUFFER_SIZE 4096
-struct code_buffer_t
+#define OUTPUT_BUFFER_SIZE 4096
+struct output_buffer_t
 {
-    struct code_buffer_t *      next;
-    uint32_t                    offset;
-    uint8_t *                   data;
+    struct output_buffer_t *        next;
+    uint32_t                        offset;
+    uint8_t *                       data;
 };
 
 struct token_t
@@ -137,6 +152,7 @@ struct token_t
     uint32_t        type;
     uint32_t        token;
     uint32_t        length;
+    // uint32_t        last_in_line;
 };
 
 void next_token();
@@ -146,6 +162,8 @@ void parse();
 void parse_instruction();
 
 void parse_label();
+
+void parse_declaration();
 
 void emit_byte(uint8_t byte);
 

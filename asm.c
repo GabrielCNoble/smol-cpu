@@ -165,13 +165,22 @@ struct opcode_t opcodes[] = {
 
 struct opvariant_t variant_buffer[MAX_OPCODE_VARIANTS];
 
-const char punctuators[] = {
-    [PUNCTUATOR_COMMA]      = ',',
-    [PUNCTUATOR_COLLON]     = ':',
-    [PUNCTUATOR_LBRACE]     = '[',
-    [PUNCTUATOR_RBRACE]     = ']',
-    [PUNCTUATOR_PLUS]       = '+',
-    [PUNCTUATOR_MINUS]      = '-',
+uint32_t punctuators[] = {
+    [','] = PUNCTUATOR_COMMA,
+    [':'] = PUNCTUATOR_COLLON,
+    ['['] = PUNCTUATOR_LBRACE,
+    [']'] = PUNCTUATOR_RBRACE,
+    ['.'] = PUNCTUATOR_DOT,
+    ['+'] = PUNCTUATOR_PLUS,
+    ['-'] = PUNCTUATOR_MINUS,
+    ['('] = PUNCTUATOR_LPARENTHESIS,
+    [')'] = PUNCTUATOR_RPARENTHESIS
+};
+
+const char *keywords[] = {
+    [KEYWORD_STRING]    = "string",
+    [KEYWORD_BYTE]      = "byte",
+    [KEYWORD_WORD]      = "word"
 };
 
 const char map[] = {
@@ -241,13 +250,19 @@ const char map[] = {
     ['7'] = CHAR_TYPE_CONSTANT,
     ['8'] = CHAR_TYPE_CONSTANT,
     ['9'] = CHAR_TYPE_CONSTANT,
+    ['\\'] = CHAR_TYPE_LITERAL,
+    ['\''] = CHAR_TYPE_CONSTANT | CHAR_TYPE_LITERAL,
 
     ['+'] = CHAR_TYPE_PUNCTUATOR,
     ['-'] = CHAR_TYPE_PUNCTUATOR,
     ['['] = CHAR_TYPE_PUNCTUATOR,
     [']'] = CHAR_TYPE_PUNCTUATOR,
     [','] = CHAR_TYPE_PUNCTUATOR,
-    [':'] = CHAR_TYPE_PUNCTUATOR
+    [':'] = CHAR_TYPE_PUNCTUATOR,
+    ['('] = CHAR_TYPE_PUNCTUATOR,
+    [')'] = CHAR_TYPE_PUNCTUATOR,
+    ['.'] = CHAR_TYPE_PUNCTUATOR,
+    ['\"'] = CHAR_TYPE_LITERAL,
 };
 
 uint32_t line_source_offset = 0;
@@ -261,8 +276,8 @@ struct token_t cur_token = {
     .type = TOKEN_TYPE_SPACE
 };
 
-struct code_buffer_t *output_buffer = NULL;
-struct code_buffer_t *cur_buffer = NULL;
+struct output_buffer_t *output_buffer = NULL;
+struct output_buffer_t *cur_buffer = NULL;
 uint32_t output_offset = 0;
 
 struct label_t *labels = NULL;
@@ -275,6 +290,9 @@ void next_token()
 {
     char token_text[64];
     uint32_t token_text_cursor = 0;
+
+    cur_token.type = TOKEN_TYPE_SPACE;
+    // cur_token.last_in_line = 0;
 
     while(source_offset < source_len && map[source[source_offset]] == TOKEN_TYPE_SPACE)
     {
@@ -295,39 +313,43 @@ void next_token()
         return;
     }
 
-    if(map[source[source_offset]] == TOKEN_TYPE_PUNCTUATOR)
+    if(map[source[source_offset]] == CHAR_TYPE_PUNCTUATOR)
     {
         cur_token.type = TOKEN_TYPE_PUNCTUATOR;
-
-        switch(source[source_offset])
-        {
-            case ',':
-                cur_token.token = PUNCTUATOR_COMMA;        
-            break;
-
-            case '[':
-                cur_token.token = PUNCTUATOR_LBRACE;
-            break;
-
-            case ']':
-                cur_token.token = PUNCTUATOR_RBRACE;
-            break;
-
-            case '+':
-                cur_token.token = PUNCTUATOR_PLUS;
-            break;
-
-            case '-':
-                cur_token.token = PUNCTUATOR_MINUS;
-            break;
-
-            case ':':
-                cur_token.token = PUNCTUATOR_COLLON;
-            break;
-        }
-
+        cur_token.token = punctuators[source[source_offset]];
         cur_token.line = line;
         cur_token.column = column;
+
+        source_offset++;
+        column++;
+    }
+    else if(map[source[source_offset]] == CHAR_TYPE_LITERAL && source[source_offset] == '\"')
+    {
+        source_offset++;
+        column++;
+
+        cur_token.type = TOKEN_TYPE_LITERAL;
+        cur_token.token = source_offset;
+        cur_token.line = line;
+        cur_token.column = column;
+
+        while(source_offset < source_len && source[source_offset] != '\"')
+        {
+            if(source[source_offset] == '\n')
+            {
+                column = 0;
+                line++;
+                line_source_offset = source_offset;
+            }
+
+            column++;
+            source_offset++;
+        }
+        if(source_offset >= source_len)
+        {
+            piss(PISS_ERROR, "Unexpected end of file reached while parsing string literal on line %d, column %d!", cur_token.line, cur_token.column);
+        }
+        cur_token.length = source_offset - cur_token.token;
 
         source_offset++;
         column++;
@@ -354,25 +376,57 @@ void next_token()
 
         if(map[token_text[0]] & CHAR_TYPE_CONSTANT)
         {
-            if(token_text[0] == '0' && (token_text[1] == 'b' || token_text[1] == 'B') && token_text_cursor > 2)
+            if(token_text_cursor > 2 && token_text[0] == '0' && (token_text[1] == 'b' || token_text[1] == 'B'))
             {
                 /* binary constants starts with a 0b, and may be valid only if there's at least one character after
                 the prefix */
                 constant_type = CONSTANT_BINARY;
             }
-            else if(token_text[0] == '0' && (token_text[1] == 'x' || token_text[1] == 'X') && token_text_cursor > 2)
+            else if(token_text_cursor > 2 && token_text[0] == '0' && (token_text[1] == 'x' || token_text[1] == 'X'))
             {
                 /* hex constants starts with a 0x, and may be valid only if there's at least one character after
                 the prefix */
                 constant_type = CONSTANT_HEXADECIMAL;
+            }
+            else if(token_text_cursor >= 3 && token_text_cursor <= 4 && token_text[0] == '\'' && token_text[token_text_cursor - 1] == '\'')
+            {
+                if(token_text[1] == '\\')
+                {
+                    /* constant is escaping a char */
+                    switch(token_text[2])
+                    {
+                        case '0':
+                            token_text[1] = '\0';
+                        break;
+
+                        case 'n':
+                            token_text[1] = '\n';
+                        break;
+
+                        case 't':
+                            token_text[1] = '\t';
+                        break;
+
+                        default:
+                            token_text[1] = token_text[2];
+                        break;
+                    }
+
+                    token_text[2] = '\'';
+                    // token_text_cursor--;
+                    // token_text[token_text_cursor] = '\0';
+                }
+                /* char constant starts with a "'", followed by a single character and ends with another "'" */
+                constant_type = CONSTANT_CHAR;
             }
             else if(map[token_text[0]] == CHAR_TYPE_CONSTANT)
             {
                 constant_type = CONSTANT_DECIMAL;
             }
             
-            if(constant_type != CONSTANT_NONE)
+            if(constant_type != CONSTANT_NONE && constant_type != CONSTANT_CHAR)
             {
+                /* check if we don't have strange stuff inside a constant */
                 for(uint32_t index = 1; index < token_text_cursor; index++)
                 {
                     if(!(map[token_text[index]] & CHAR_TYPE_CONSTANT))
@@ -399,6 +453,11 @@ void next_token()
                     constant_value = strtol(token_text, NULL, 16);
                 break;
 
+                case CONSTANT_CHAR:
+                    /* we're just interested in the character in between "'" */
+                    constant_value = token_text[1];
+                break;
+
                 case CONSTANT_BINARY:
                     /* 
                         get rid of the 0b prefix, since strtol won't accept it 
@@ -413,7 +472,7 @@ void next_token()
 
             if(constant_value > 0xffff)
             {
-                piss(PISS_ERROR, "Constant out of range at line %d, column %d!", line, column);
+                piss(PISS_WARNING, "Constant larger than 0xffff truncated to 0x%x, line %d, column %d!", (uint16_t)constant_value, line, column);
             }
 
             cur_token.type = TOKEN_TYPE_CONSTANT;
@@ -429,36 +488,71 @@ void next_token()
                 {
                     cur_token.type = TOKEN_TYPE_OPCODE;
                     cur_token.token = index;
-                    return;
+                    break;
                 }
             }
-            
-            /* test all regs */
-            for(uint32_t index = 0; index < sizeof(regs) / sizeof(regs[0]); index++)
+
+            if(cur_token.type == TOKEN_TYPE_SPACE)
             {
-                if(!strcmp(token_text, regs[index].name))
+                /* test all regs */
+                for(uint32_t index = 0; index < sizeof(regs) / sizeof(regs[0]); index++)
                 {
-                    cur_token.type = TOKEN_TYPE_REG;
-                    cur_token.token = index;
-                    return;
+                    if(!strcmp(token_text, regs[index].name))
+                    {
+                        cur_token.type = TOKEN_TYPE_REG;
+                        cur_token.token = index;
+                        break;
+                    }
+                }
+
+                if(cur_token.type == TOKEN_TYPE_SPACE)
+                {
+
+                    /* test all keywords */
+                    for(uint32_t index = 0; index < KEYWORD_LAST; index++)
+                    {
+                        if(!strcmp(token_text, keywords[index]))
+                        {
+                            cur_token.type = TOKEN_TYPE_KEYWORD,
+                            cur_token.token = index;
+                            break;
+                        }
+                    }
+
+                    if(cur_token.type == TOKEN_TYPE_SPACE)
+                    {
+                        /* probably a label */
+                        cur_token.type = TOKEN_TYPE_NAME;
+                        cur_token.token = start_offset;
+                        cur_token.length = token_text_cursor;
+                    }
                 }
             }
-
-            cur_token.type = TOKEN_TYPE_NAME;
-            cur_token.token = start_offset;
-            cur_token.length = token_text_cursor;
-
-            return;
         }
     }
+
+    /* check if this token is the last in line, to give the parser some additional information */
+    // while(source_offset < source_len && map[source[source_offset]] == TOKEN_TYPE_SPACE)
+    // {
+    //     if(source[source_offset] == '\n')
+    //     {
+    //         cur_token.last_in_line = 1;
+    //         break;
+    //     }
+
+    //     column++;
+    //     source_offset++;
+    // }
+
+    return;
 }
 
 void parse()
 {
+    next_token();
+
     while(source_offset < source_len)
     {
-        next_token();
-
         if(cur_token.type == TOKEN_TYPE_OPCODE)
         {
             parse_instruction();
@@ -466,6 +560,10 @@ void parse()
         else if(cur_token.type == TOKEN_TYPE_NAME)
         {
             parse_label();
+        }
+        else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
+        {
+            parse_declaration();
         }
     }
 }
@@ -492,7 +590,7 @@ void parse_instruction()
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(!(variant_buffer[index].dst_reg & reg_index) && variant_count)
+            if(!(variant_buffer[index].dst_reg & reg_index))
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -508,7 +606,7 @@ void parse_instruction()
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(variant_buffer[index].dst_reg != 0xffff && variant_count)
+            if(variant_buffer[index].dst_reg != 0xffff)
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -550,6 +648,7 @@ void parse_instruction()
             emit_word(constant);
         }
 
+        next_token();
         return;
     }
     else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
@@ -558,12 +657,12 @@ void parse_instruction()
     }
     else
     {
-        /* instruction may not take any operands */
+        /* check if this instruction takes no operands */
         uint16_t constant = 0;
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(variant_buffer[index].dst_reg != 0xffff && variant_count)
+            if(variant_buffer[index].dst_reg != 0xffff)
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -576,6 +675,7 @@ void parse_instruction()
             piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
         }
 
+        /* instruction take no operands, so we're done */
         emit_opcode(variant_buffer[0].opcode);
         return;
     }
@@ -589,7 +689,7 @@ void parse_instruction()
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(variant_buffer[index].src_reg && variant_count)
+            if(variant_buffer[index].src_reg)
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -604,6 +704,7 @@ void parse_instruction()
 
         /* instruction has no second operand, so we're done */
         emit_opcode(variant_buffer[0].opcode);
+        next_token();
         return;
     }
     else if(cur_token.token != PUNCTUATOR_COMMA)
@@ -622,7 +723,7 @@ void parse_instruction()
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(!(variant_buffer[index].src_reg & reg_index) && variant_count)
+            if(!(variant_buffer[index].src_reg & reg_index))
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -637,13 +738,13 @@ void parse_instruction()
 
         emit_opcode(variant_buffer[0].opcode);
     }
-    else if(cur_token.type == TOKEN_TYPE_CONSTANT)
+    else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
     {
-        /* second operand is a constant */
+        /* second operand is a constant or a label */
 
         for(uint32_t index = 0; index < variant_count; index++)
         {
-            if(variant_buffer[index].src_reg != 0xffff && variant_count)
+            if(variant_buffer[index].src_reg != 0xffff)
             {
                 variant_buffer[index] = variant_buffer[variant_count - 1];
                 variant_count--;
@@ -658,13 +759,33 @@ void parse_instruction()
 
         emit_opcode(variant_buffer[0].opcode);
 
-        if(variant_buffer[0].width == 1)
+        uint32_t constant = 0;
+
+        if(cur_token.type == TOKEN_TYPE_NAME)
         {
-            emit_byte(cur_token.token);
+            struct label_t *label = find_label_from_token(&cur_token);
+
+            if(label)
+            {
+                constant = label->offset;
+            }
+            else
+            {
+                create_patch(&cur_token, output_offset);
+            }
         }
         else
         {
-            emit_word(cur_token.token);
+            constant = cur_token.token;
+        }
+
+        if(variant_buffer[0].width == 1)
+        {
+            emit_byte(constant);
+        }
+        else
+        {
+            emit_word(constant);
         }
     }
     else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
@@ -675,6 +796,8 @@ void parse_instruction()
     {
         piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
     }
+
+    next_token();
 }
 
 void parse_label()
@@ -685,25 +808,137 @@ void parse_label()
     {
         /* this is a label */
         struct label_t *label = create_label(&label_token, output_offset);
+        next_token();
     }
+}
+
+void parse_declaration()
+{
+    // printf("%d\n", cur_token.token);
+    if(cur_token.token != PUNCTUATOR_DOT)
+    {
+        piss(PISS_ERROR, "Expecting '.' on line %d, column %d!", cur_token.line, cur_token.column);
+    }
+
+    next_token();
+
+    if(cur_token.type != TOKEN_TYPE_KEYWORD)
+    {
+        piss(PISS_ERROR, "Expecting keyword on line %d, column %d!", cur_token.line, cur_token.column);
+    }
+
+    struct token_t keyword = cur_token;
+
+    next_token();
+
+    if(keyword.token == KEYWORD_STRING)
+    {
+        if(cur_token.type != TOKEN_TYPE_LITERAL)
+        {
+            piss(PISS_ERROR, "Expecting string literal at line %d, column %d!", cur_token.line, cur_token.column);
+        }
+
+        uint32_t offset = cur_token.token;
+        for(uint32_t index = 0; index < cur_token.length; index++)
+        {
+            char c = source[offset + index];
+
+            if(c == '\n')
+            {
+                emit_byte(' ');
+            }
+            else
+            {
+                emit_byte(c);
+            }
+        }
+        emit_byte('\0');
+        next_token();
+        return;
+    }
+    else
+    {
+        uint32_t alloc_count = 1;
+
+        if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LPARENTHESIS)
+        {
+            /* the keyword will receive a size "parameter" */
+            next_token();
+            struct token_t constant = cur_token;
+
+            if(constant.type != TOKEN_TYPE_CONSTANT)
+            {
+                printf(PISS_ERROR, "Expecting constant on line %d, column %d!", cur_token.line, cur_token.column);
+            }
+
+            next_token();
+
+            if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_RPARENTHESIS)
+            {
+                printf(PISS_ERROR, "Expecting ')' on line %d, column %d!", cur_token.line, cur_token.column);
+            }
+
+            alloc_count = constant.token;
+
+            next_token();
+        }
+
+        if(keyword.token == KEYWORD_BYTE)
+        {
+            uint32_t count = 0;
+            while(cur_token.type == TOKEN_TYPE_CONSTANT)
+            {
+                count++;
+                emit_byte(cur_token.token);
+                next_token();
+            }
+
+            while(count < alloc_count)
+            {
+                emit_byte(0);
+                count++;
+            }
+        }
+        else
+        {
+            uint32_t count = 0;
+            while(cur_token.type == TOKEN_TYPE_CONSTANT)
+            {
+                count++;
+                emit_word(cur_token.token);
+                next_token();
+            }
+
+            while(count < alloc_count)
+            {
+                emit_word(0);
+                count++;
+            }
+        }
+    }
+
+    // for(uint32_t index = 0; index < KEYWORD_LAST; index++)
+    // {
+    //     if(!strcmp(keywords[index], source + cur_token.))
+    // }
 }
 
 void emit_byte(uint8_t byte)
 {
     if(!output_buffer)
     {
-        output_buffer = calloc(1, sizeof(struct code_buffer_t));
-        output_buffer->data = calloc(1, CODE_BUFFER_SIZE);
+        output_buffer = calloc(1, sizeof(struct output_buffer_t));
+        output_buffer->data = calloc(1, OUTPUT_BUFFER_SIZE);
         cur_buffer = output_buffer;
     }
 
     cur_buffer->data[cur_buffer->offset] = byte;
     cur_buffer->offset++;
 
-    if(cur_buffer->offset == CODE_BUFFER_SIZE)
+    if(cur_buffer->offset == OUTPUT_BUFFER_SIZE)
     {
-        struct code_buffer_t *new_buffer = calloc(1, sizeof(struct code_buffer_t));
-        new_buffer->data = calloc(1, CODE_BUFFER_SIZE);
+        struct output_buffer_t *new_buffer = calloc(1, sizeof(struct output_buffer_t));
+        new_buffer->data = calloc(1, OUTPUT_BUFFER_SIZE);
         cur_buffer->next = new_buffer;
         cur_buffer = new_buffer;
     }
@@ -733,8 +968,8 @@ void emit_opcode(uint16_t opcode)
 
 void patch_code()
 {
-    struct code_buffer_t *code_buffer = output_buffer;
-    uint32_t code_offset = CODE_BUFFER_SIZE;
+    struct output_buffer_t *buffer = output_buffer;
+    uint32_t offset = OUTPUT_BUFFER_SIZE;
 
     struct label_t *patch = patches;
 
@@ -747,15 +982,15 @@ void patch_code()
             piss(PISS_ERROR, "Undefined label %s!", patch->name);
         }
 
-        while(code_offset < patch->offset)
+        while(offset < patch->offset)
         {
-            code_offset += code_buffer->offset;
-            code_buffer = code_buffer->next;
+            offset += buffer->offset;
+            buffer = buffer->next;
         }
 
-        uint32_t patch_offset = patch->offset % CODE_BUFFER_SIZE;
-        code_buffer->data[patch_offset] = (uint8_t)label->offset;
-        code_buffer->data[patch_offset + 1] = (uint8_t)(label->offset >> 8);
+        uint32_t patch_offset = patch->offset % OUTPUT_BUFFER_SIZE;
+        buffer->data[patch_offset] = (uint8_t)label->offset;
+        buffer->data[patch_offset + 1] = (uint8_t)(label->offset >> 8);
 
         patch = patch->next;
     }
@@ -851,7 +1086,7 @@ void piss(uint32_t level, const char *fmt, ...)
         break;
 
         case PISS_MESSAGE:
-            printf("MESASGE: ");
+            printf("MESSAGE: ");
         break;
     }
     
@@ -936,15 +1171,16 @@ int main(int argc, char *argv[])
         if(output)
         {
             FILE *output_file = fopen(output, "wb");
-            struct code_buffer_t *buffer = output_buffer;
-
+            struct output_buffer_t *buffer = output_buffer;
+            uint32_t code_size = 0;
             while(buffer)
             {
                 fwrite(buffer->data, 1, buffer->offset, output_file);
+                code_size += buffer->offset;
                 buffer = buffer->next;
             }
-
             fclose(output_file);
+            piss(PISS_MESSAGE, "0x%x bytes generated", code_size);
 
             struct label_t *label = labels;
             while(label)
@@ -958,7 +1194,7 @@ int main(int argc, char *argv[])
             buffer = output_buffer;
             while(buffer)
             {
-                struct code_buffer_t *next_buffer = buffer->next;
+                struct output_buffer_t *next_buffer = buffer->next;
                 free(buffer->data);
                 free(buffer);
                 buffer = next_buffer;
@@ -968,6 +1204,8 @@ int main(int argc, char *argv[])
         {
             piss(PISS_ERROR, "Input file empty!");
         }
+
+        piss(PISS_MESSAGE, "Done!");
 
         return 0;
     }
