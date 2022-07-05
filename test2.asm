@@ -16,6 +16,4 @@ test_func:
 .word(0x100)
 stack_start:
 
-ze_string: .string "blah"
-
 

@@ -64,14 +64,26 @@ enum KEYWORDS
 
 enum REGS
 {
-    REG_ACCL   = 0x0,
-    REG_ACCH   = 0x1,
-    REG_ACCW   = 0x2,
-    REG_BASE   = 0x8,
-    REG_STT    = 0x9,
-    REG_STB    = 0xa,
+    REG_ACCL        = 0x0,
+    REG_ACCH        = 0x1,
+    REG_ACCW        = 0x2,
+    REG_BASE        = 0x8,
+    REG_STT         = 0x9,
+    REG_STB         = 0xa,
+    REG_CONST       = 0x1e,
+    REG_INDIRECT    = 0x1f,  
     REG_LAST
 };
+
+#define REG_ACCL_BIT (1 << REG_ACCL)
+#define REG_ACCH_BIT (1 << REG_ACCH)
+#define REG_ACCW_BIT (1 << REG_ACCW)
+#define REG_BASE_BIT (1 << REG_BASE)
+#define REG_STT_BIT (1 << REG_STT)
+#define REG_STB_BIT (1 << REG_STB)
+#define REG_CONST_BIT (1 << REG_CONST)
+#define REG_INDIRECT_BIT (1 << REG_INDIRECT)
+#define REG_ALL_BIT (REG_ACCL_BIT | REG_ACCH_BIT | REG_ACCW_BIT | REG_BASE_BIT | REG_STT_BIT | REG_STB_BIT)
 
 struct reg_t
 {
@@ -106,20 +118,15 @@ enum OPCODES
     OPCODE_LAST
 };
 
-enum OPERAND_FLAGS
-{
-    OPERAND_FLAG_INDIRECT = 1,
-};
-
 struct opvariant_t
 {
     uint16_t opcode;
-    uint16_t src_reg;
-    uint16_t src_flags;
-
-    uint16_t dst_reg;
-    uint16_t dst_flags;
     uint16_t width; 
+
+    uint32_t operands[2];
+
+    // uint32_t operand0;
+    // uint32_t operand1;
 };
 
 #define MAX_OPCODE_VARIANTS 0x20
