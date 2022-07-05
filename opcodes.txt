@@ -43,14 +43,18 @@ uops:
 	0x0000: (nop) next instruction
 	=====================================
 
-	0xds01: mov reg, reg
+	0xdsm1: mov reg, reg
 		d = destination register
 		s = source register
+
+		m = flags
+			0: ignore dst in arg latch
+			1: ignore src in arg latch
 
 		step 0: clock reg
 	=====================================
 
-	0x0w03: mov [addr_latch], data_latch
+	0x0wm3: mov [addr_latch], data_latch
 		w = read width
 			0 = byte
 			1 = word
@@ -64,10 +68,13 @@ uops:
 		step 3: assert memory clock
 	=====================================
 
-	0x0w04: mov data_latch, [addr_latch]
+	0x0wm4: mov data_latch, [addr_latch]
 		w = read width
 			0 = byte
 			1 = word
+
+		m = flags
+			0: 
 
 		step 0: assert output enable and memory clock
 		step 1: enable memory input buffer and enable writes to data_latch (low byte will be selected)
