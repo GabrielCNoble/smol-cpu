@@ -48,8 +48,17 @@ uops:
 		s = source register
 
 		m = flags
-			0: ignore dst in arg latch
-			1: ignore src in arg latch
+			0-1: value used for the src register
+				0 = uop
+				1 = arg dst
+				2 = arg src
+				3 = invalid
+
+			2-3: value used for the dst register
+				0 = uop
+				1 = arg dst
+				2 = arg src
+				3 = invalid
 
 		step 0: clock reg
 	=====================================
@@ -87,7 +96,7 @@ uops:
 		step 5: assert data_latch clock
 	=====================================
 
-	0xor15: op alu, register
+	0xor05: op alu, register
 		r = register
 		o = operation
 
@@ -425,10 +434,13 @@ uops:
 	mov:
 		0xc0 0xd0: mov dst, [imm16]
 		0xc1 0xds: mov dst, [addr]
+			0x5021 0x0104 0x0341
 		0xc2 0xds: mov dst, [addr + imm16]
+			0x5401 0x0104 0x010f 0x7021 0x0305 0x5701 0x0104 0x0341 
 
 		0xc3 0x0s: mov [imm16], src
-		0xc4 0xds: mov [addr], src 
+		0xc4 0xds: mov [addr], src
+			0x5011 0x3021 0x0103
 		0xc5 0xds: mov [addr + imm16], src
 
 	add:

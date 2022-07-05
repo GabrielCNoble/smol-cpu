@@ -598,12 +598,30 @@ void parse()
     }
 }
 
+void filter_variants(struct opvariant_t *variant_buffer, uint32_t *variant_count, uint32_t operand, uint32_t mask, uint32_t result)
+{
+    uint32_t count = *variant_count;
+
+    for(uint32_t index = 0; index < count; index++)
+    {
+        if((variant_buffer[index].operands[operand] & mask) != result)
+        {
+            variant_buffer[index] = variant_buffer[count - 1];
+            count--;
+            index--;
+        }
+    }
+
+    *variant_count = count;
+}
+
 void parse_instruction()
 {
     uint32_t opcode_index = cur_token.token;
     struct opcode_t *opcode = opcodes + opcode_index;
     struct token_t constant_token = {.type = TOKEN_TYPE_SPACE};
-    uint32_t operands[2] = {0, 0};
+    // uint32_t operands[2] = {0, 0};
+    struct operand_t operands[2] = {};
     next_token();
 
     memcpy(variant_buffer, opcode->variants, sizeof(struct opvariant_t) * opcode->variant_count);
@@ -635,46 +653,54 @@ void parse_instruction()
     {
         for(uint32_t operand_index = 0; operand_index < 2; operand_index++)
         {
-            uint32_t mem_operand = 0;
             uint32_t term_count = 1;
+            operands[operand_index].reg = REG_LAST;
 
             if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
             {
-                uint32_t reg_index = 1 << REG_INDIRECT;
-                operands[operand_index] |= reg_index;
+                uint32_t mask = 1 << REG_INDIRECT;
+                operands[operand_index].indirect = 1;
+                // operands[operand_index] |= reg_index;
                 /* filter out all opcodes where the current operand isn't memory */ 
-                for(uint32_t index = 0; index < variant_count; index++)
-                {
-                    if(!(variant_buffer[index].operands[operand_index] & operands[operand_index]))
-                    {
-                        variant_buffer[index] = variant_buffer[variant_count - 1];
-                        variant_count--;
-                        index--;
-                    }
-                }
+                // for(uint32_t index = 0; index < variant_count; index++)
+                // {
+                //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
+                //     {
+                //         variant_buffer[index] = variant_buffer[variant_count - 1];
+                //         variant_count--;
+                //         index--;
+                //     }
+                // }
+
+                filter_variants(variant_buffer, &variant_count, operand_index, mask, mask);
 
                 if(!variant_count)
                 {
                     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
 
-                mem_operand = 1;
                 term_count++;
                 next_token();
             }
             else
             {
-                uint32_t reg_index = 1 << REG_INDIRECT;
-                /* filter out all opcodes where the current operand is memory */
-                for(uint32_t index = 0; index < variant_count; index++)
+                uint32_t mask = 1 << REG_INDIRECT;
+                filter_variants(variant_buffer, &variant_count, operand_index, mask, 0);
+
+                if(!variant_count)
                 {
-                    if(variant_buffer[index].operands[operand_index] & reg_index)
-                    {
-                        variant_buffer[index] = variant_buffer[variant_count - 1];
-                        variant_count--;
-                        index--;
-                    }
+                    piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
+                /* filter out all opcodes where the current operand is memory */
+                // for(uint32_t index = 0; index < variant_count; index++)
+                // {
+                //     if(variant_buffer[index].operands[operand_index] & reg_index)
+                //     {
+                //         variant_buffer[index] = variant_buffer[variant_count - 1];
+                //         variant_count--;
+                //         index--;
+                //     }
+                // }
             }
 
             /* if this is a memory operand, there can be a constant, a register or a 
@@ -686,82 +712,87 @@ void parse_instruction()
                     /* register */
 
                     struct reg_t *reg = regs + cur_token.token;
-                    if(operands[operand_index] & reg->value)
+                    if(operands[operand_index].reg != REG_LAST)
                     {
+                        /* only one register per operand is allowed */
                         piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                     }
 
-                    /* we store the index of the register, instead of its bit, because we need 
-                    to recover it later when emitting the opcode */
-                    operands[operand_index] |= reg->value;
-                    uint32_t reg_index = 1 << reg->value;
+                    operands[operand_index].reg = reg->value;
+                    // uint32_t reg_index = 1 << reg->value;
 
-                    for(uint32_t index = 0; index < variant_count; index++)
-                    {
-                        if(!(variant_buffer[index].operands[operand_index] & reg_index))
-                        {
-                            variant_buffer[index] = variant_buffer[variant_count - 1];
-                            variant_count--;
-                            index--;
-                        }
-                    }
+                    // for(uint32_t index = 0; index < variant_count; index++)
+                    // {
+                    //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
+                    //     {
+                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
+                    //         variant_count--;
+                    //         index--;
+                    //     }
+                    // }
 
-                    if(!variant_count)
-                    {
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
+                    // if(!variant_count)
+                    // {
+                    //     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    // }
 
                     next_token();
+
+                    // printf("%d %d %x\n", operand_index, variant_count, variant_buffer[0].opcode);
                 }
                 else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
                 {
                     /* constant or a label */
                     uint32_t reg_index = 1 << REG_CONST;
 
-                    if(operands[operand_index] & reg_index)
+                    if(operands[operand_index].constant)
                     {
+                        /* only one constant per operand is allowed */
                         piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                     }
-                    operands[operand_index] |= reg_index;
 
-                    for(uint32_t index = 0; index < variant_count; index++)
-                    {
-                        if(!(variant_buffer[index].operands[operand_index] & reg_index))
-                        {
-                            variant_buffer[index] = variant_buffer[variant_count - 1];
-                            variant_count--;
-                            index--;
-                        }
-                    }
+                    operands[operand_index].constant = 1;
 
-                    if(!variant_count)
-                    {
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
+                    // for(uint32_t index = 0; index < variant_count; index++)
+                    // {
+                    //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
+                    //     {
+                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
+                    //         variant_count--;
+                    //         index--;
+                    //     }
+                    // }
+
+                    // if(!variant_count)
+                    // {
+                    //     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    // }
+
                     constant_token = cur_token;
                     next_token();
                 }
 
                 if(!term_index)
                 {
-                    if(!(operands[operand_index] & ~(REG_INDIRECT_BIT)))
+                    if(operands[operand_index].reg == REG_LAST && !operands[operand_index].constant)
                     {
+                        /* if we get here without an operand, it means whatever came before shouldn't be there */
                         piss(PISS_ERROR, "Expecting register, constant or label at line %d, column %d!", cur_token.line, cur_token.column);
                     }
 
-                    if(mem_operand)
+                    if(operands[operand_index].indirect)
                     {
                         if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
                         {
                             if(cur_token.token == PUNCTUATOR_RBRACE)
                             {
-                                /* we're done here */
+                                /* this operand is composed by a single term, so we're done */
                                 next_token();
                                 break;
                             }
                             else if(cur_token.token == PUNCTUATOR_PLUS)
                             {
-                                /* we got a '+' */
+                                /* we got a '+', so check for another term */
                                 next_token();
 
                                 if(cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_NAME)
@@ -789,49 +820,45 @@ void parse_instruction()
 
                     next_token();
                 }
+            }
 
-                // if(mem_operand)
-                // {
-                //     if(!term_index)
-                //     {
-                //         if(!(operands[operand_index] & ~(REG_INDIRECT_BIT)))
-                //         {
-                //             piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
-                //         }
-                //         else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
-                //         {
-                //             if(cur_token.token == PUNCTUATOR_RBRACE)
-                //             {
-                //                 /* we're done here */
-                //                 next_token();
-                //                 break;
-                //             }
-                //             else if(cur_token.token == PUNCTUATOR_PLUS)
-                //             {
-                //                 /* we'll be adding something to what we have so far */
-                //                 next_token();
+            uint32_t mask;
+            uint32_t result;
 
-                //                 if(cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_NAME)
-                //                 {
-                //                     piss(PISS_ERROR, "Expecting register, constant or label after '+' at line %d, column %d!", cur_token.line, cur_token.column);    
-                //                 }
-                //             }
-                //             else
-                //             {
-                //                 piss(PISS_ERROR, "Expecting '+' or ']' at line %d, column %d!", cur_token.line, cur_token.column);
-                //             }    
-                //         }    
-                //     }
-                //     else
-                //     {
-                //         if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_RBRACE)
-                //         {
-                //             piss(PISS_ERROR, "Expecting ']' at line %d, column %d!", cur_token.line, cur_token.column);
-                //         }
+            if(operands[operand_index].reg == REG_LAST)
+            {
+                mask = REG_ALL_BIT;
+                result = 0;
+            }
+            else
+            {
+                mask = 1 << operands[operand_index].reg;
+                result = mask;
+            }
+            filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
 
-                //         next_token();
-                //     }
-                // }
+            mask = 1 << REG_CONST;
+            result = 0;
+            if(operands[operand_index].constant)
+            {
+                result = mask;    
+            }
+
+            filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
+
+            // for(uint32_t index = 0; index < variant_count; index++)
+            // {
+            //     if((variant_buffer[index].operands[operand_index] & mask) != result)
+            //     {
+            //         variant_buffer[index] = variant_buffer[variant_count - 1];
+            //         variant_count--;
+            //         index--;
+            //     }
+            // }
+
+            if(!variant_count)
+            {
+                piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
             }
 
             if(!operand_index)
@@ -865,13 +892,13 @@ void parse_instruction()
         }
     }
 
-    uint32_t clear_mask = ~((1 << REG_CONST) | (1 << REG_INDIRECT));
-    operands[0] &= clear_mask;
-    operands[1] &= clear_mask;
+    // uint32_t clear_mask = ~((1 << REG_CONST) | (1 << REG_INDIRECT));
+    // operands[0] &= clear_mask;
+    // operands[1] &= clear_mask;
 
     if((variant_buffer[0].opcode & WORD_OPCODE_MASK) == WORD_OPCODE_MASK)
     {
-        variant_buffer[0].opcode |= (operands[1] | (operands[0] << 4)) << 8;
+        variant_buffer[0].opcode |= (operands[1].reg | (operands[0].reg << 4)) << 8;
     }
 
     emit_opcode(variant_buffer[0].opcode);
@@ -907,225 +934,6 @@ void parse_instruction()
             emit_word(constant);
         }
     }
-
-
-    // if(cur_token.type == TOKEN_TYPE_REG)
-    // {
-    //     /* first operand is a register */
-    //     dst_reg = regs + cur_token.token;
-    //     uint32_t reg_index = 1 << dst_reg->value;
-
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(!(variant_buffer[index].operands[0] & reg_index))
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Invalid first operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    // }
-    // else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
-    // {
-    //     /* first operand is a constant or a label */
-    //     uint16_t constant = 0;
-    //     uint32_t reg_index = 1 << REG_CONST;
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(!(variant_buffer[index].operands[0] & reg_index))
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Invalid first operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    //     emit_opcode(variant_buffer[0].opcode);
-
-    //     if(cur_token.type == TOKEN_TYPE_NAME)
-    //     {
-    //         struct label_t *label = find_label_from_token(&cur_token);
-
-    //         if(label)
-    //         {
-    //             constant = label->offset;
-    //         }
-    //         else
-    //         {
-    //             create_patch(&cur_token, output_offset);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         constant = cur_token.token;
-    //     }
-
-    //     if(variant_buffer[0].width == 1)
-    //     {
-    //         emit_byte(constant);
-    //     }
-    //     else
-    //     {
-    //         emit_word(constant);
-    //     }
-
-    //     next_token();
-    //     return;
-    // }
-    // // else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
-    // // {
-    // //     /* first operand is a memory location */
-    // // }
-    // else
-    // {
-    //     /* check if this instruction takes no operands */
-    //     uint16_t constant = 0;
-    //     uint32_t reg_index = 1 << REG_CONST;
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(!(variant_buffer[index].operands[0] & reg_index))
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    //     /* instruction take no operands, so we're done */
-    //     emit_opcode(variant_buffer[0].opcode);
-    //     return;
-    // }
-
-    // next_token();
-
-    // if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_COMMA)
-    // {
-    //     /* check if this instruction takes only one operand */
-    //     uint32_t index = 0;
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(variant_buffer[index].operands[1])
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    //     /* instruction has no second operand, so we're done */
-    //     emit_opcode(variant_buffer[0].opcode);
-    //     return;
-    // }
-
-    // next_token();
-
-    // if(cur_token.type == TOKEN_TYPE_REG)
-    // {
-    //     /* second operand is a register */
-    //     src_reg = regs + cur_token.token;
-    //     uint32_t reg_index = 1 << src_reg->value;
-
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(!(variant_buffer[index].operands[1] & reg_index))
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-        
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Invalid second operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    //     emit_opcode(variant_buffer[0].opcode);
-    // }
-    // else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
-    // {
-    //     /* second operand is a constant or a label */
-    //     uint32_t reg_index = 1 << REG_CONST;
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(!(variant_buffer[index].operands[1] & reg_index))
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-        
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Invalid second operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-
-    //     emit_opcode(variant_buffer[0].opcode);
-
-    //     uint32_t constant = 0;
-
-    //     if(cur_token.type == TOKEN_TYPE_NAME)
-    //     {
-    //         /* second operand is a label, so try finding it */
-    //         struct label_t *label = find_label_from_token(&cur_token);
-
-    //         if(label)
-    //         {
-    //             constant = label->offset;
-    //         }
-    //         else
-    //         {
-    //             /* didn't find a label, so create a patch so we know where to 
-    //             update once all labels have been found */
-    //             create_patch(&cur_token, output_offset);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         constant = cur_token.token;
-    //     }
-
-    //     if(variant_buffer[0].width == 1)
-    //     {
-    //         emit_byte(constant);
-    //     }
-    //     else
-    //     {
-    //         emit_word(constant);
-    //     }
-    // }
-    // else if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
-    // {
-    //     /* second operand is a memory location */
-    // }
-    // else
-    // {
-    //     piss(PISS_ERROR, "Expecting operand at line %d, column %d!", cur_token.line, cur_token.column);
-    // }
-
-    // next_token();
 }
 
 void parse_label()

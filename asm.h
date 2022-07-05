@@ -118,15 +118,19 @@ enum OPCODES
     OPCODE_LAST
 };
 
+struct operand_t
+{
+    uint16_t reg;
+    uint16_t constant : 1;
+    uint16_t indirect : 1;
+};
+
 struct opvariant_t
 {
     uint16_t opcode;
     uint16_t width; 
 
     uint32_t operands[2];
-
-    // uint32_t operand0;
-    // uint32_t operand1;
 };
 
 #define MAX_OPCODE_VARIANTS 0x20
@@ -157,7 +161,7 @@ struct token_t
     uint32_t        line;
     uint32_t        column;
     uint32_t        type;
-    uint32_t        token;
+    int32_t         token;
     uint32_t        length;
     // uint32_t        last_in_line;
 };
@@ -165,6 +169,8 @@ struct token_t
 void next_token();
 
 void parse();
+
+void filter_variants(struct opvariant_t *variant_buffer, uint32_t *variant_count, uint32_t operand, uint32_t mask, uint32_t result);
 
 void parse_instruction();
 

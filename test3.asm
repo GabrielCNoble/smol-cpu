@@ -1,15 +1,21 @@
-mov [base + 4], accw
-mov accw, [base + 4]
-mov accw, [label]
-mov accw, [base + label]
-mov accw, [fun_global + base]
-mov accw, fun_string
-mov [base + 4], accw
-mov [label], accw
-mov [base + label], accw
-mov [fun_string], base
-.byte(0x10)
-label:
+mov stt, stack_start
+loop:
+mov accw, var
+push accw
+call test_func
+pop accw
+jmp loop
 
-fun_global: .word 0x1234
-fun_string: .string "big blah"
+test_func:
+    mov base, [stt + 0x2]
+    mov accw, [base]
+    sub accw, 1
+    mov [base], accw
+    ret
+
+
+.byte(0x100)
+stack_start:
+
+
+var: .word 0xf
