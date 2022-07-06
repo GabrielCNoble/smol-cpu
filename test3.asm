@@ -8,9 +8,9 @@ jmp loop
 
 test_func:
     mov base, [stt + 0x2]
-    mov accw, [base]
-    sub accw, 1
-    mov [base], accw
+    mov accl, [base]
+    sub accl, 1
+    mov [base], accl
     ret
 
 

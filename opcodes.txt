@@ -37,8 +37,7 @@ flags:
 uops:
 	format:
 		0-3: cpu function
-		4-7: unused
-		8-15: opcode arg
+		4-15: uop arg
 
 	0x0000: (nop) next instruction
 	=====================================
@@ -63,7 +62,7 @@ uops:
 		step 0: clock reg
 	=====================================
 
-	0x0wm3: mov [addr_latch], data_latch
+	0x0w03: mov [addr_latch], data_latch
 		w = read width
 			0 = byte
 			1 = word
@@ -77,13 +76,10 @@ uops:
 		step 3: assert memory clock
 	=====================================
 
-	0x0wm4: mov data_latch, [addr_latch]
+	0x0w04: mov data_latch, [addr_latch]
 		w = read width
 			0 = byte
 			1 = word
-
-		m = flags
-			0: 
 
 		step 0: assert output enable and memory clock
 		step 1: enable memory input buffer and enable writes to data_latch (low byte will be selected)
@@ -214,6 +210,7 @@ uops:
 
 		0x29: sub base, imm16
 			0x5401 0x0104 0x7801 0x1305 0x8701 0x010f
+		sub base, acc
 		0x2a: sub base, stt
 		0x2b: sub base, stb
 
@@ -426,22 +423,60 @@ uops:
 		0x96: pop stb
 			0x5901 0x0107 0x0104 0xa301
 
+	in:
+		in accl, imm16
+
+		in accl, base
+
+
+		in acch, imm16
+
+		in acch, base
+
+
+		in acc, imm16
+
+		in acc, base
+
+	out:
+		out imm16, accl
+
+		out base, accl
+
+
+		out imm16, acch
+
+		out base, acch
+
+
+		out imm16, acc
+
+		out base, acc
+
 
 2 byte opcodes (0xc0 to 0xff):
 	("addr" referenced in the opcodes are registers)
 		d = dst register
-		s = addr register
+		s = src register
 	mov:
 		0xc0 0xd0: mov dst, [imm16]
+			0x5401 0x0104 0x010f 0x5301 0x0104 0x0341
+
 		0xc1 0xds: mov dst, [addr]
 			0x5021 0x0104 0x0341
+
 		0xc2 0xds: mov dst, [addr + imm16]
 			0x5401 0x0104 0x010f 0x7021 0x0305 0x5701 0x0104 0x0341 
 
+
 		0xc3 0x0s: mov [imm16], src
+			0x5401 0x0104 0x010f 0x5301 0x3021 0x0103
+		
 		0xc4 0xds: mov [addr], src
 			0x5011 0x3021 0x0103
+
 		0xc5 0xds: mov [addr + imm16], src
+			0x5401 0x0104 0x010f 0x7081 0x0305 0x5701 0x3021 0x0103
 
 	add:
 		0xc6 0xd0: add dst, [imm16]

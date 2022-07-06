@@ -2,6 +2,7 @@
 #define ASM_H
 
 #include <stdint.h>
+#include "isa.h"
 
 enum PISS_LEVEL
 {
@@ -84,6 +85,8 @@ enum REGS
 #define REG_CONST_BIT (1 << REG_CONST)
 #define REG_INDIRECT_BIT (1 << REG_INDIRECT)
 #define REG_ALL_BIT (REG_ACCL_BIT | REG_ACCH_BIT | REG_ACCW_BIT | REG_BASE_BIT | REG_STT_BIT | REG_STB_BIT)
+#define REG_ALL16_BIT (REG_ACCW_BIT | REG_BASE_BIT | REG_STT_BIT | REG_STB_BIT)
+#define REG_ALL8_BIT (REG_ACCL_BIT | REG_ACCH_BIT)
 
 struct reg_t
 {
@@ -140,7 +143,7 @@ struct opcode_t
     uint32_t                variant_count;
     struct opvariant_t *    variants;
 };
-
+ 
 struct label_t
 {
     struct label_t *    next;

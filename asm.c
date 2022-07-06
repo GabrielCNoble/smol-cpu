@@ -26,82 +26,86 @@ uint16_t operand_width[] = {
 struct opcode_t opcodes[] = {
     [OPCODE_MOV]    = {
         .name = "mov",
-        .variant_count = 23,
+        .variant_count = 26,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x01,    .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = 0x02,    .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_ACCH_BIT},
-            {.opcode = 0x03,    .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = 0x04,    .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_ACCL_BIT},
-            {.opcode = 0x05,    .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = 0x06,    .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_BASE_BIT},
-            {.opcode = 0x07,    .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_STT_BIT},
-            {.opcode = 0x08,    .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_STB_BIT},
-            {.opcode = 0x09,    .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = 0x0a,    .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_ACCW_BIT},
-            {.opcode = 0x0b,    .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_STT_BIT},
-            {.opcode = 0x0c,    .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_STB_BIT},
-            {.opcode = 0x0d,    .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = 0x0e,    .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_ACCW_BIT},
-            {.opcode = 0x0f,    .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_BASE_BIT},
-            {.opcode = 0x10,    .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_STB_BIT},
-            {.opcode = 0x11,    .width = 2, .operands[0] = REG_STB_BIT, .operands[1] = REG_STT_BIT},
-            {.opcode = 0x00c0,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_CONST_BIT | REG_INDIRECT_BIT},
-            {.opcode = 0x00c1,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_ALL_BIT | REG_INDIRECT_BIT},
-            {.opcode = 0x00c2,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_ALL_BIT | REG_CONST_BIT | REG_INDIRECT_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCL_IMM8,  .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCL_ACCH,  .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_ACCH_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCH_IMM8,  .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCH_ACCL,  .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_ACCL_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCW_IMM16,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCW_BASE,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_BASE_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCW_STT,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_STT_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACC_STB,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_STB_BIT},
+            {.opcode = ISA_OPCODE_MOV_BASE_IMM16,  .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_BASE_ACCW,  .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_ACCW_BIT},
+            {.opcode = ISA_OPCODE_MOV_BASE_STT,  .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_STT_BIT},
+            {.opcode = ISA_OPCODE_MOV_BASE_STB,  .width = 2, .operands[0] = REG_BASE_BIT, .operands[1] = REG_STB_BIT},
+            {.opcode = ISA_OPCODE_MOV_STT_IMM16,  .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_STT_ACCW,  .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_ACCW_BIT},
+            {.opcode = ISA_OPCODE_MOV_STT_BASE,  .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_BASE_BIT},
+            {.opcode = ISA_OPCODE_MOV_STT_STB,  .width = 2, .operands[0] = REG_STT_BIT, .operands[1] = REG_STB_BIT},
+            {.opcode = ISA_OPCODE_MOV_STB_STT,  .width = 2, .operands[0] = REG_STB_BIT, .operands[1] = REG_STT_BIT},
+            {.opcode = ISA_OPCODE_MOV_DST_I_IMM16,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_CONST_BIT | REG_INDIRECT_BIT},
+            {.opcode = ISA_OPCODE_MOV_DST_I_SRC,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_ALL_BIT | REG_INDIRECT_BIT},
+            {.opcode = ISA_OPCODE_MOV_DST_I_SRC_IMM16,  .width = 2, .operands[0] = REG_ALL_BIT, .operands[1] = REG_ALL_BIT | REG_CONST_BIT | REG_INDIRECT_BIT},
 
-            {.opcode = 0x00c3,  .width = 2, .operands[0] = REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL_BIT},
-            {.opcode = 0x00c4,  .width = 2, .operands[0] = REG_ALL_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL_BIT},
-            {.opcode = 0x00c5,  .width = 2, .operands[0] = REG_ALL_BIT | REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL_BIT}
+            {.opcode = ISA_OPCODE_MOV_I_IMM16_SRC16,  .width = 2, .operands[0] = REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL16_BIT},
+            {.opcode = ISA_OPCODE_MOV_I_DST_SRC16,  .width = 2, .operands[0] = REG_ALL16_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL16_BIT},
+            {.opcode = ISA_OPCODE_MOV_I_DST_IMM16_SRC16,  .width = 2, .operands[0] = REG_ALL16_BIT | REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL16_BIT},
+
+            {.opcode = ISA_OPCODE_MOV_I_IMM16_SRC8,  .width = 1, .operands[0] = REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL8_BIT},
+            {.opcode = ISA_OPCODE_MOV_I_DST_SRC8,  .width = 1, .operands[0] = REG_ALL16_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL8_BIT},
+            {.opcode = ISA_OPCODE_MOV_I_DST_IMM16_SRC8,  .width = 1, .operands[0] = REG_ALL16_BIT | REG_CONST_BIT | REG_INDIRECT_BIT, .operands[1] = REG_ALL8_BIT}
         }
     },
     [OPCODE_ADD]    = {
         .name = "add",
         .variant_count = 15,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x12, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x13, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_ADD_ACCL_IMM8, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_ADD_ACCL_ACCH, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
 
-            {.opcode = 0x14, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x15, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCL},
+            {.opcode = ISA_OPCODE_ADD_ACCH_IMM8, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_ADD_ACCH_ACCL, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCL},
 
-            {.opcode = 0x16, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x17, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
-            {.opcode = 0x18, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STT},
-            {.opcode = 0x19, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_ADD_ACCW_IMM16, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_ADD_ACCW_BASE, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_ADD_ACCW_STT, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_ADD_ACCW_STB, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STB},
 
-            {.opcode = 0x1a, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x1b, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW},
-            {.opcode = 0x1c, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STT},
-            {.opcode = 0x1d, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_ADD_BASE_IMM16, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_ADD_BASE_ACCW, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_ADD_BASE_STT, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_ADD_BASE_STB, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STB},
 
-            {.opcode = 0x1e, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x1f, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_ACCW},
-            {.opcode = 0x20, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_ADD_STT_IMM16, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_ADD_STT_ACCW, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_ADD_STT_BASE, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
         }
     },
     [OPCODE_SUB]    = {
         .name = "sub",
         .variant_count = 15,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x21, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x22, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_SUB_ACCL_IMM8, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_SUB_ACCL_ACCH, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
 
-            {.opcode = 0x23, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x24, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCL},
+            {.opcode = ISA_OPCODE_SUB_ACCH_IMM8, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_SUB_ACCH_ACCL, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCL},
 
-            {.opcode = 0x25, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x26, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
-            {.opcode = 0x27, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STT},
-            {.opcode = 0x28, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_SUB_ACCW_IMM16, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_SUB_ACCW_BASE, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_SUB_ACCW_STT, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_SUB_ACCW_STB, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_STB},
 
-            {.opcode = 0x29, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x2a, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW},
-            {.opcode = 0x2b, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STT},
-            {.opcode = 0x2c, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_SUB_BASE_IMM16, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_SUB_BASE_ACCW, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_SUB_BASE_STT, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_SUB_BASE_STB, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_STB},
 
-            {.opcode = 0x2d, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x2e, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_ACCW},
-            {.opcode = 0x2f, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_SUB_STT_IMM16, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_SUB_STT_ACCW, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_SUB_STT_BASE, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
         }
     },
     [OPCODE_MUL]    = {.name = "mul"},
@@ -110,17 +114,17 @@ struct opcode_t opcodes[] = {
         .name = "cmp",
         .variant_count = 8,
         .variants = (struct opvariant_t[]) {
-            {.opcode = 0x3b, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x3c, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_CMP_ACCL_IMM8, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_CMP_ACCL_ACCH, .width = 1, .operands[0] = 1 << REG_ACCL, .operands[1] = 1 << REG_ACCH},
 
-            {.opcode = 0x3d, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x3e, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_CMP_ACCH_IMM8, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_CMP_ACCH_ACCL, .width = 1, .operands[0] = 1 << REG_ACCH, .operands[1] = 1 << REG_ACCH},
 
-            {.opcode = 0x3f, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x40, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_CMP_ACCW_IMM16, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_CMP_ACCW_BASE, .width = 2, .operands[0] = 1 << REG_ACCW, .operands[1] = 1 << REG_BASE},
 
-            {.opcode = 0x41, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
-            {.opcode = 0x42, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW}
+            {.opcode = ISA_OPCODE_CMP_BASE_IMM16, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_CMP_BASE_ACCW, .width = 2, .operands[0] = 1 << REG_BASE, .operands[1] = 1 << REG_ACCW}
         }
     },
     [OPCODE_AND]    = {.name = "and"},
@@ -136,14 +140,14 @@ struct opcode_t opcodes[] = {
         .name = "jmp",
         .variant_count = 1,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x77, .width = 2, .operands[0] = 1 << REG_CONST}
+            {.opcode = ISA_OPCODE_JMP_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
         }
     },
     [OPCODE_JZ]     = {
         .name = "jz",
         .variant_count = 1,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x78, .width = 2, .operands[0] = 1 << REG_CONST}
+            {.opcode = ISA_OPCODE_JZ_JE_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
         }
     },
     [OPCODE_JNZ]    = {.name = "jnz"},
@@ -151,40 +155,40 @@ struct opcode_t opcodes[] = {
         .name = "call",
         .variant_count = 1,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x87, .width = 2, .operands[0] = 1 << REG_CONST}
+            {.opcode = ISA_OPCODE_CALL_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
         }
     },
     [OPCODE_RET]    = {
         .name = "ret",
         .variant_count = 1,
         .variants = (struct opvariant_t []) {
-            {.opcode = 0x88, .width = 2}
+            {.opcode = ISA_OPCODE_RET, .width = 2}
         }
     },
     [OPCODE_PUSH]   = {
         .name = "push",
         .variant_count = 8,
         .variants = (struct opvariant_t []){
-            // {.opcode = 0x89, .width = 1, .dst_reg = 0xffff},
-            {.opcode = 0x8a, .width = 2, .operands[0] = 1 << REG_CONST},
-            {.opcode = 0x8b, .width = 2, .operands[0] = 1 << REG_ACCL},
-            {.opcode = 0x8c, .width = 2, .operands[0] = 1 << REG_ACCH},
-            {.opcode = 0x8d, .width = 2, .operands[0] = 1 << REG_ACCW},
-            {.opcode = 0x8e, .width = 2, .operands[0] = 1 << REG_BASE},
-            {.opcode = 0x8f, .width = 2, .operands[0] = 1 << REG_STT},
-            {.opcode = 0x90, .width = 2, .operands[0] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_PUSH_IMM8, .width = 1, .operands[0] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_PUSH_IMM16, .width = 2, .operands[0] = 1 << REG_CONST},
+            {.opcode = ISA_OPCODE_PUSH_ACCL, .width = 2, .operands[0] = 1 << REG_ACCL},
+            {.opcode = ISA_OPCODE_PUSH_ACCH, .width = 2, .operands[0] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_PUSH_ACCW, .width = 2, .operands[0] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_PUSH_BASE, .width = 2, .operands[0] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_PUSH_STT, .width = 2, .operands[0] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_PUSH_STB, .width = 2, .operands[0] = 1 << REG_STB},
         }
     },
     [OPCODE_POP]    = {
         .name = "pop",
         .variant_count = 6,
         .variants = (struct opvariant_t []){
-            {.opcode = 0x91, .width = 2, .operands[0] = 1 << REG_ACCL},
-            {.opcode = 0x92, .width = 2, .operands[0] = 1 << REG_ACCH},
-            {.opcode = 0x93, .width = 2, .operands[0] = 1 << REG_ACCW},
-            {.opcode = 0x94, .width = 2, .operands[0] = 1 << REG_BASE},
-            {.opcode = 0x95, .width = 2, .operands[0] = 1 << REG_STT},
-            {.opcode = 0x96, .width = 2, .operands[0] = 1 << REG_STB},
+            {.opcode = ISA_OPCODE_POP_ACCL, .width = 2, .operands[0] = 1 << REG_ACCL},
+            {.opcode = ISA_OPCODE_POP_ACCH, .width = 2, .operands[0] = 1 << REG_ACCH},
+            {.opcode = ISA_OPCODE_POP_ACCW, .width = 2, .operands[0] = 1 << REG_ACCW},
+            {.opcode = ISA_OPCODE_POP_BASE, .width = 2, .operands[0] = 1 << REG_BASE},
+            {.opcode = ISA_OPCODE_POP_STT, .width = 2, .operands[0] = 1 << REG_STT},
+            {.opcode = ISA_OPCODE_POP_STB, .width = 2, .operands[0] = 1 << REG_STB},
         }
     }
 };
