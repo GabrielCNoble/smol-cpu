@@ -113,11 +113,28 @@ enum OPCODES
     OPCODE_DEC,
     OPCODE_JMP,
     OPCODE_JZ,
+    OPCODE_JE,
     OPCODE_JNZ,
+    OPCODE_JNE,
+
+    OPCODE_JA,
+    OPCODE_JNBE,
+    OPCODE_JNA,
+    OPCODE_JBE,
+    OPCODE_JAE,
+    OPCODE_JNB,
+    OPCODE_JNC,
+    OPCODE_JNAE,
+    OPCODE_JB,
+    OPCODE_JC,  
+    OPCODE_JG,
+    OPCODE_JL,
     OPCODE_CALL,
     OPCODE_RET,
     OPCODE_PUSH,
     OPCODE_POP,
+    OPCODE_IN,
+    OPCODE_OUT,
     OPCODE_LAST
 };
 
@@ -169,7 +186,7 @@ struct token_t
     // uint32_t        last_in_line;
 };
 
-void next_token();
+void lex_token();
 
 void parse();
 

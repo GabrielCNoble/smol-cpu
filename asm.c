@@ -150,7 +150,41 @@ struct opcode_t opcodes[] = {
             {.opcode = ISA_OPCODE_JZ_JE_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
         }
     },
-    [OPCODE_JNZ]    = {.name = "jnz"},
+    [OPCODE_JE]     = {
+        .name = "je",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = ISA_OPCODE_JZ_JE_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
+        }
+    },
+    [OPCODE_JNZ]    = {
+        .name = "jnz",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = ISA_OPCODE_JNZ_JNE_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
+        }
+    },
+    [OPCODE_JNE]    = {
+        .name = "jne",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = ISA_OPCODE_JNZ_JNE_IMM16, .width = 2, .operands[0] = 1 << REG_CONST}
+        }
+    },
+
+    [OPCODE_JA]     = {.name = "ja"},
+    [OPCODE_JNBE]   = {.name = "jnbe"},
+    [OPCODE_JNA]    = {.name = "jna"},
+    [OPCODE_JBE]    = {.name = "jbe"},
+    [OPCODE_JAE]    = {.name = "jae"},
+    [OPCODE_JNB]    = {.name = "jnb"},
+    [OPCODE_JNC]    = {.name = "jnc"},
+    [OPCODE_JNAE]   = {.name = "jnae"},
+    [OPCODE_JB]     = {.name = "jb"},
+    [OPCODE_JC]     = {.name = "jc"},  
+    [OPCODE_JG]     = {.name = "jg"},
+    [OPCODE_JL]     = {.name = "jl"},
+
     [OPCODE_CALL]   = {
         .name = "call",
         .variant_count = 1,
@@ -167,9 +201,9 @@ struct opcode_t opcodes[] = {
     },
     [OPCODE_PUSH]   = {
         .name = "push",
-        .variant_count = 8,
+        .variant_count = 7,
         .variants = (struct opvariant_t []){
-            {.opcode = ISA_OPCODE_PUSH_IMM8, .width = 1, .operands[0] = 1 << REG_CONST},
+            // {.opcode = ISA_OPCODE_PUSH_IMM8, .width = 1, .operands[0] = 1 << REG_CONST},
             {.opcode = ISA_OPCODE_PUSH_IMM16, .width = 2, .operands[0] = 1 << REG_CONST},
             {.opcode = ISA_OPCODE_PUSH_ACCL, .width = 2, .operands[0] = 1 << REG_ACCL},
             {.opcode = ISA_OPCODE_PUSH_ACCH, .width = 2, .operands[0] = 1 << REG_ACCH},
@@ -189,6 +223,16 @@ struct opcode_t opcodes[] = {
             {.opcode = ISA_OPCODE_POP_BASE, .width = 2, .operands[0] = 1 << REG_BASE},
             {.opcode = ISA_OPCODE_POP_STT, .width = 2, .operands[0] = 1 << REG_STT},
             {.opcode = ISA_OPCODE_POP_STB, .width = 2, .operands[0] = 1 << REG_STB},
+        }
+    },
+    [OPCODE_IN]     = {
+        .name = "in"
+    },
+    [OPCODE_OUT]    = {
+        .name = "out",
+        .variant_count = 1,
+        .variants = (struct opvariant_t []) {
+            {.opcode = ISA_OPCODE_OUT_BASE_ACCL, .width = 1, .operands[0] = REG_BASE_BIT, .operands[1] = REG_ACCL_BIT}
         }
     }
 };
@@ -302,6 +346,10 @@ uint32_t source_offset = 0;
 uint32_t source_len = 0;
 char *source = NULL;
 
+struct token_t next_token = {
+    .type = TOKEN_TYPE_SPACE
+};
+
 struct token_t cur_token = {
     .type = TOKEN_TYPE_SPACE
 };
@@ -316,13 +364,13 @@ struct label_t *last_label = NULL;
 struct label_t *patches = NULL;
 struct label_t *last_patch = NULL;
 
-void next_token()
+void lex_token()
 {
     char token_text[64];
     uint32_t token_text_cursor = 0;
 
-    cur_token.type = TOKEN_TYPE_SPACE;
-    // cur_token.last_in_line = 0;
+    cur_token = next_token;
+    next_token.type = TOKEN_TYPE_SPACE;
 
     while(source_offset < source_len && map[source[source_offset]] == TOKEN_TYPE_SPACE)
     {
@@ -339,17 +387,17 @@ void next_token()
 
     if(map[source[source_offset]] == TOKEN_TYPE_SPACE)
     {
-        cur_token.type = TOKEN_TYPE_SPACE;
+        next_token.type = TOKEN_TYPE_SPACE;
         return;
     }
 
     if(map[source[source_offset]] == CHAR_TYPE_PUNCTUATOR)
     {
         /* punctuator */
-        cur_token.type = TOKEN_TYPE_PUNCTUATOR;
-        cur_token.token = punctuators[source[source_offset]];
-        cur_token.line = line;
-        cur_token.column = column;
+        next_token.type = TOKEN_TYPE_PUNCTUATOR;
+        next_token.token = punctuators[source[source_offset]];
+        next_token.line = line;
+        next_token.column = column;
 
         source_offset++;
         column++;
@@ -360,10 +408,10 @@ void next_token()
         source_offset++;
         column++;
 
-        cur_token.type = TOKEN_TYPE_LITERAL;
-        cur_token.token = source_offset;
-        cur_token.line = line;
-        cur_token.column = column;
+        next_token.type = TOKEN_TYPE_LITERAL;
+        next_token.token = source_offset;
+        next_token.line = line;
+        next_token.column = column;
 
         while(source_offset < source_len && source[source_offset] != '\"')
         {
@@ -379,9 +427,9 @@ void next_token()
         }
         if(source_offset >= source_len)
         {
-            piss(PISS_ERROR, "Unexpected end of file reached while parsing string literal on line %d, column %d!", cur_token.line, cur_token.column);
+            piss(PISS_ERROR, "Unexpected end of file reached while parsing string literal on line %d, column %d!", next_token.line, next_token.column);
         }
-        cur_token.length = source_offset - cur_token.token;
+        next_token.length = source_offset - next_token.token;
 
         source_offset++;
         column++;
@@ -404,8 +452,8 @@ void next_token()
         }
 
         token_text[token_text_cursor] = '\0';
-        cur_token.line = start_line;
-        cur_token.column = start_column;
+        next_token.line = start_line;
+        next_token.column = start_column;
 
         if(map[token_text[0]] & CHAR_TYPE_CONSTANT)
         {
@@ -509,8 +557,8 @@ void next_token()
                 piss(PISS_WARNING, "Constant larger than 0xffff truncated to 0x%x, line %d, column %d!", (uint16_t)constant_value, line, column);
             }
 
-            cur_token.type = TOKEN_TYPE_CONSTANT;
-            cur_token.token = (uint16_t)constant_value;
+            next_token.type = TOKEN_TYPE_CONSTANT;
+            next_token.token = (uint16_t)constant_value;
         }
         else
         {
@@ -520,26 +568,26 @@ void next_token()
             {
                 if(!strcmp(token_text, opcodes[index].name))
                 {
-                    cur_token.type = TOKEN_TYPE_OPCODE;
-                    cur_token.token = index;
+                    next_token.type = TOKEN_TYPE_OPCODE;
+                    next_token.token = index;
                     break;
                 }
             }
 
-            if(cur_token.type == TOKEN_TYPE_SPACE)
+            if(next_token.type == TOKEN_TYPE_SPACE)
             {
                 /* test all regs */
                 for(uint32_t index = 0; index < sizeof(regs) / sizeof(regs[0]); index++)
                 {
                     if(!strcmp(token_text, regs[index].name))
                     {
-                        cur_token.type = TOKEN_TYPE_REG;
-                        cur_token.token = index;
+                        next_token.type = TOKEN_TYPE_REG;
+                        next_token.token = index;
                         break;
                     }
                 }
 
-                if(cur_token.type == TOKEN_TYPE_SPACE)
+                if(next_token.type == TOKEN_TYPE_SPACE)
                 {
 
                     /* test all keywords */
@@ -547,43 +595,31 @@ void next_token()
                     {
                         if(!strcmp(token_text, keywords[index]))
                         {
-                            cur_token.type = TOKEN_TYPE_KEYWORD,
-                            cur_token.token = index;
+                            next_token.type = TOKEN_TYPE_KEYWORD,
+                            next_token.token = index;
                             break;
                         }
                     }
 
-                    if(cur_token.type == TOKEN_TYPE_SPACE)
+                    if(next_token.type == TOKEN_TYPE_SPACE)
                     {
                         /* probably a label */
-                        cur_token.type = TOKEN_TYPE_NAME;
-                        cur_token.token = start_offset;
-                        cur_token.length = token_text_cursor;
+                        next_token.type = TOKEN_TYPE_NAME;
+                        next_token.token = start_offset;
+                        next_token.length = token_text_cursor;
                     }
                 }
             }
         }
     }
 
-    /* check if this token is the last in line, to give the parser some additional information */
-    // while(source_offset < source_len && map[source[source_offset]] == TOKEN_TYPE_SPACE)
-    // {
-    //     if(source[source_offset] == '\n')
-    //     {
-    //         cur_token.last_in_line = 1;
-    //         break;
-    //     }
-
-    //     column++;
-    //     source_offset++;
-    // }
-
     return;
 }
 
 void parse()
 {
-    next_token();
+    lex_token();
+    lex_token();
 
     while(source_offset < source_len)
     {
@@ -619,6 +655,25 @@ void filter_variants(struct opvariant_t *variant_buffer, uint32_t *variant_count
     *variant_count = count;
 }
 
+/*
+    instruction:
+        opcode
+        opcode operand
+        opcode operand, operand
+
+    operand:
+        term
+        [term]
+        [term + term]
+
+    term:
+        label-reference
+        register
+        constant
+
+    label-reference:
+        name
+*/
 void parse_instruction()
 {
     uint32_t opcode_index = cur_token.token;
@@ -626,34 +681,34 @@ void parse_instruction()
     struct token_t constant_token = {.type = TOKEN_TYPE_SPACE};
     // uint32_t operands[2] = {0, 0};
     struct operand_t operands[2] = {};
-    next_token();
+    lex_token();
 
     memcpy(variant_buffer, opcode->variants, sizeof(struct opvariant_t) * opcode->variant_count);
     uint32_t variant_count = opcode->variant_count;
 
     // printf("%d %d\n", cur_token.type, cur_token.token);
 
-    if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token != PUNCTUATOR_LBRACE || cur_token.type != TOKEN_TYPE_PUNCTUATOR &&
-       cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_NAME)
-    {
-        /* the current token isn't valid as part of an operand, so check if this instruction has a
-        no operand variant */
-        for(uint32_t index = 0; index < variant_count; index++)
-        {
-            if(variant_buffer[index].operands[0])
-            {
-                variant_buffer[index] = variant_buffer[variant_count - 1];
-                variant_count--;
-                index--;
-            }
-        }
+    // if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token != PUNCTUATOR_LBRACE || cur_token.type != TOKEN_TYPE_PUNCTUATOR &&
+    //    cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_NAME)
+    // {
+    //     /* the current token isn't valid as part of an operand, so check if this instruction has a
+    //     no operand variant */
+    //     for(uint32_t index = 0; index < variant_count; index++)
+    //     {
+    //         if(variant_buffer[index].operands[0])
+    //         {
+    //             variant_buffer[index] = variant_buffer[variant_count - 1];
+    //             variant_count--;
+    //             index--;
+    //         }
+    //     }
         
-        if(!variant_count)
-        {
-            piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
-        }
-    }
-    else
+    //     if(!variant_count)
+    //     {
+    //         piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
+    //     }
+    // }
+    // else
     {
         for(uint32_t operand_index = 0; operand_index < 2; operand_index++)
         {
@@ -664,17 +719,6 @@ void parse_instruction()
             {
                 uint32_t mask = 1 << REG_INDIRECT;
                 operands[operand_index].indirect = 1;
-                // operands[operand_index] |= reg_index;
-                /* filter out all opcodes where the current operand isn't memory */ 
-                // for(uint32_t index = 0; index < variant_count; index++)
-                // {
-                //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
-                //     {
-                //         variant_buffer[index] = variant_buffer[variant_count - 1];
-                //         variant_count--;
-                //         index--;
-                //     }
-                // }
 
                 filter_variants(variant_buffer, &variant_count, operand_index, mask, mask);
 
@@ -684,7 +728,7 @@ void parse_instruction()
                 }
 
                 term_count++;
-                next_token();
+                lex_token();
             }
             else
             {
@@ -695,20 +739,8 @@ void parse_instruction()
                 {
                     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
-                /* filter out all opcodes where the current operand is memory */
-                // for(uint32_t index = 0; index < variant_count; index++)
-                // {
-                //     if(variant_buffer[index].operands[operand_index] & reg_index)
-                //     {
-                //         variant_buffer[index] = variant_buffer[variant_count - 1];
-                //         variant_count--;
-                //         index--;
-                //     }
-                // }
             }
 
-            /* if this is a memory operand, there can be a constant, a register or a 
-            register + a constant inside braces. Otherwise, it may be a register or a constant */
             for(uint32_t term_index = 0; term_index < term_count; term_index++)
             {
                 if(cur_token.type == TOKEN_TYPE_REG)
@@ -723,30 +755,12 @@ void parse_instruction()
                     }
 
                     operands[operand_index].reg = reg->value;
-                    // uint32_t reg_index = 1 << reg->value;
-
-                    // for(uint32_t index = 0; index < variant_count; index++)
-                    // {
-                    //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
-                    //     {
-                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
-                    //         variant_count--;
-                    //         index--;
-                    //     }
-                    // }
-
-                    // if(!variant_count)
-                    // {
-                    //     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    // }
-
-                    next_token();
-
-                    // printf("%d %d %x\n", operand_index, variant_count, variant_buffer[0].opcode);
+                    lex_token();
                 }
-                else if(cur_token.type == TOKEN_TYPE_CONSTANT || cur_token.type == TOKEN_TYPE_NAME)
+                else if(cur_token.type == TOKEN_TYPE_CONSTANT || (cur_token.type == TOKEN_TYPE_NAME && 
+                       (next_token.type != TOKEN_TYPE_PUNCTUATOR || next_token.token != PUNCTUATOR_COLLON)))
                 {
-                    /* constant or a label */
+                    /* constant or a label reference */
                     uint32_t reg_index = 1 << REG_CONST;
 
                     if(operands[operand_index].constant)
@@ -757,47 +771,32 @@ void parse_instruction()
 
                     operands[operand_index].constant = 1;
 
-                    // for(uint32_t index = 0; index < variant_count; index++)
-                    // {
-                    //     if(!(variant_buffer[index].operands[operand_index] & reg_index))
-                    //     {
-                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
-                    //         variant_count--;
-                    //         index--;
-                    //     }
-                    // }
-
-                    // if(!variant_count)
-                    // {
-                    //     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    // }
-
                     constant_token = cur_token;
-                    next_token();
+                    lex_token();
                 }
 
                 if(!term_index)
                 {
-                    if(operands[operand_index].reg == REG_LAST && !operands[operand_index].constant)
-                    {
-                        /* if we get here without an operand, it means whatever came before shouldn't be there */
-                        piss(PISS_ERROR, "Expecting register, constant or label at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-
                     if(operands[operand_index].indirect)
                     {
+                        if(operands[operand_index].reg == REG_LAST && !operands[operand_index].constant)
+                        {
+                            /* there needs to be something inside the braces */
+                            piss(PISS_ERROR, "Expecting register, constant or label at line %d, column %d!", cur_token.line, cur_token.column);
+                        }
+
                         if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
                         {
                             if(cur_token.token == PUNCTUATOR_RBRACE)
                             {
                                 /* this operand is composed by a single term, so we're done */
-                                next_token();
+                                lex_token();
                                 break;
                             }
                             else if(cur_token.token == PUNCTUATOR_PLUS)
                             {
                                 /* we got a '+', so check for another term */
-                                next_token();
+                                lex_token();
 
                                 if(cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_NAME)
                                 {
@@ -822,7 +821,7 @@ void parse_instruction()
                         piss(PISS_ERROR, "Expecting ']' at line %d, column %d!", cur_token.line, cur_token.column);
                     }
 
-                    next_token();
+                    lex_token();
                 }
             }
 
@@ -850,35 +849,34 @@ void parse_instruction()
 
             filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
 
-            // for(uint32_t index = 0; index < variant_count; index++)
-            // {
-            //     if((variant_buffer[index].operands[operand_index] & mask) != result)
-            //     {
-            //         variant_buffer[index] = variant_buffer[variant_count - 1];
-            //         variant_count--;
-            //         index--;
-            //     }
-            // }
-
-            if(!variant_count)
-            {
-                piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-            }
-
             if(!operand_index)
             {
+                if(!operands[0].constant && operands[0].reg == REG_LAST)
+                {
+                    /* din't find a first operand, so check if we have variants left */
+
+                    if(!variant_count)
+                    {
+                        piss(PISS_ERROR, "Missing operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    }
+
+                    break;
+                }
+
                 if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_COMMA)
                 {
                     /* no comma after the first operand, so check if this instruction takes only one operand */
-                    for(uint32_t index = 0; index < variant_count; index++)
-                    {
-                        if(variant_buffer[index].operands[1])
-                        {
-                            variant_buffer[index] = variant_buffer[variant_count - 1];
-                            variant_count--;
-                            index--;
-                        }
-                    }
+                    // for(uint32_t index = 0; index < variant_count; index++)
+                    // {
+                    //     if(variant_buffer[index].operands[1])
+                    //     {
+                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
+                    //         variant_count--;
+                    //         index--;
+                    //     }
+                    // }
+
+                    filter_variants(variant_buffer, &variant_count, 1, REG_ALL_BIT, 0);
                     
                     if(!variant_count)
                     {
@@ -890,7 +888,14 @@ void parse_instruction()
                 else
                 {
                     /* we found a ',' */
-                    next_token();
+                    lex_token();
+                }
+            }
+            else
+            {
+                if(!operands[1].constant && operands[1].reg == REG_LAST)
+                {
+                    piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
             }
         }
@@ -940,15 +945,20 @@ void parse_instruction()
     }
 }
 
+/*
+    label:
+        name:
+*/
 void parse_label()
 {
     struct token_t label_token = cur_token;
-    next_token();
+    lex_token();
     if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_COLLON)
     {
         /* this is a label */
         struct label_t *label = create_label(&label_token, output_offset);
-        next_token();
+        // printf("create label %s\n", label->name);
+        lex_token();
     }
     else
     {
@@ -963,7 +973,7 @@ void parse_declaration()
         piss(PISS_ERROR, "Expecting '.' on line %d, column %d!", cur_token.line, cur_token.column);
     }
 
-    next_token();
+    lex_token();
 
     if(cur_token.type != TOKEN_TYPE_KEYWORD)
     {
@@ -972,7 +982,7 @@ void parse_declaration()
 
     struct token_t keyword = cur_token;
 
-    next_token();
+    lex_token();
 
     if(keyword.token == KEYWORD_STRING)
     {
@@ -984,19 +994,36 @@ void parse_declaration()
         uint32_t offset = cur_token.token;
         for(uint32_t index = 0; index < cur_token.length; index++)
         {
-            char c = source[offset + index];
+            // char c = source[offset + index];
 
-            if(c == '\n')
+            if(source[offset + index] == '\n')
             {
                 emit_byte(' ');
             }
+            else if(index < cur_token.length - 1 && source[offset + index] == '\\')
+            {
+                if(source[offset + index + 1] == 'n')
+                {
+                    emit_byte('\n');
+                }
+                else if(source[offset + index + 1] == 't')
+                {
+                    emit_byte('\t');
+                }
+                else if(source[offset + index + 1] == '0')
+                {
+                    emit_byte('\0');
+                }
+
+                index++;
+            }
             else
             {
-                emit_byte(c);
+                emit_byte(source[offset + index]);
             }
         }
         emit_byte('\0');
-        next_token();
+        lex_token();
         return;
     }
     else
@@ -1006,7 +1033,7 @@ void parse_declaration()
         if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LPARENTHESIS)
         {
             /* the keyword will receive a size "parameter" */
-            next_token();
+            lex_token();
             struct token_t constant = cur_token;
 
             if(constant.type != TOKEN_TYPE_CONSTANT)
@@ -1014,7 +1041,7 @@ void parse_declaration()
                 printf(PISS_ERROR, "Expecting constant on line %d, column %d!", cur_token.line, cur_token.column);
             }
 
-            next_token();
+            lex_token();
 
             if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_RPARENTHESIS)
             {
@@ -1023,7 +1050,7 @@ void parse_declaration()
 
             alloc_count = constant.token;
 
-            next_token();
+            lex_token();
         }
 
         if(keyword.token == KEYWORD_BYTE)
@@ -1033,7 +1060,7 @@ void parse_declaration()
             {
                 count++;
                 emit_byte(cur_token.token);
-                next_token();
+                lex_token();
             }
 
             while(count < alloc_count)
@@ -1049,7 +1076,7 @@ void parse_declaration()
             {
                 count++;
                 emit_word(cur_token.token);
-                next_token();
+                lex_token();
             }
 
             while(count < alloc_count)
@@ -1136,7 +1163,7 @@ void patch_code()
 
 struct label_t *create_label_on_list(char *name, uint16_t name_len, uint16_t offset, struct label_t **first, struct label_t **last)
 {
-    struct label_t *label = calloc(1, sizeof(struct label_t *));
+    struct label_t *label = calloc(1, sizeof(struct label_t ));
 
     if(name_len)
     {
@@ -1167,12 +1194,14 @@ struct label_t *create_label_on_list(char *name, uint16_t name_len, uint16_t off
 
 struct label_t *create_label(struct token_t *token, uint16_t offset)
 {
-    return create_label_on_list(source + token->token, token->length, offset, &labels, &last_label);
+    struct label_t *label = create_label_on_list(source + token->token, token->length, offset, &labels, &last_label);
+    return label;
 }
 
 struct label_t *create_patch(struct token_t *token, uint16_t offset)
 {
-    return create_label_on_list(source + token->token, token->length, offset, &patches, &last_patch);
+    struct label_t *patch = create_label_on_list(source + token->token, token->length, offset, &patches, &last_patch);
+    return patch;
 }
 
 struct label_t *find_label_from_token(struct token_t *token)
