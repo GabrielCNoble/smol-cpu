@@ -30,8 +30,8 @@ struct opcode_t opcodes[] = {
         .variants = (struct opvariant_t []) {
             {.opcode = ISA_OPCODE_MOV_ACCL_IMM8,  .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_CONST_BIT},
             {.opcode = ISA_OPCODE_MOV_ACCL_ACCH,  .width = 1, .operands[0] = REG_ACCL_BIT, .operands[1] = REG_ACCH_BIT},
-            {.opcode = ISA_OPCODE_MOV_ACCH_IMM8,  .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_CONST_BIT},
-            {.opcode = ISA_OPCODE_MOV_ACCH_ACCL,  .width = 2, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_ACCL_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCH_IMM8,  .width = 1, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_CONST_BIT},
+            {.opcode = ISA_OPCODE_MOV_ACCH_ACCL,  .width = 1, .operands[0] = REG_ACCH_BIT, .operands[1] = REG_ACCL_BIT},
             {.opcode = ISA_OPCODE_MOV_ACCW_IMM16,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_CONST_BIT},
             {.opcode = ISA_OPCODE_MOV_ACCW_BASE,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_BASE_BIT},
             {.opcode = ISA_OPCODE_MOV_ACCW_STT,  .width = 2, .operands[0] = REG_ACCW_BIT, .operands[1] = REG_STT_BIT},
@@ -851,31 +851,29 @@ void parse_instruction()
 
             if(!operand_index)
             {
+                if(!variant_count)
+                {
+                    if(!operands[0].constant && operands[0].reg == REG_LAST)
+                    {
+                        /* no variants, no first operand, no service! */
+                        piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    }
+                    else
+                    {
+                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    }
+                }
+
                 if(!operands[0].constant && operands[0].reg == REG_LAST)
                 {
-                    /* din't find a first operand, so check if we have variants left */
-
-                    if(!variant_count)
-                    {
-                        piss(PISS_ERROR, "Missing operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-
+                    /* we have no first operand but still have variants, which
+                    means this instruction takes not operands */
                     break;
                 }
 
                 if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_COMMA)
                 {
                     /* no comma after the first operand, so check if this instruction takes only one operand */
-                    // for(uint32_t index = 0; index < variant_count; index++)
-                    // {
-                    //     if(variant_buffer[index].operands[1])
-                    //     {
-                    //         variant_buffer[index] = variant_buffer[variant_count - 1];
-                    //         variant_count--;
-                    //         index--;
-                    //     }
-                    // }
-
                     filter_variants(variant_buffer, &variant_count, 1, REG_ALL_BIT, 0);
                     
                     if(!variant_count)
@@ -893,17 +891,20 @@ void parse_instruction()
             }
             else
             {
-                if(!operands[1].constant && operands[1].reg == REG_LAST)
+                if(!variant_count)
                 {
-                    piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    if(!operands[1].constant && operands[1].reg == REG_LAST)
+                    {
+                        piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    }
+                    else
+                    {
+                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+                    }
                 }
             }
         }
     }
-
-    // uint32_t clear_mask = ~((1 << REG_CONST) | (1 << REG_INDIRECT));
-    // operands[0] &= clear_mask;
-    // operands[1] &= clear_mask;
 
     if((variant_buffer[0].opcode & WORD_OPCODE_MASK) == WORD_OPCODE_MASK)
     {

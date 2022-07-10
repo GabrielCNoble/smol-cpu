@@ -1,2 +1,1 @@
-jmp label
-label:
+mov accl, 0x80
