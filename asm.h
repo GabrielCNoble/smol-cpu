@@ -17,7 +17,8 @@ enum CHAR_TYPE
     CHAR_TYPE_KEYWORD          = 1 << 1,
     CHAR_TYPE_CONSTANT         = 1 << 2,
     CHAR_TYPE_LITERAL          = 1 << 3,
-    CHAR_TYPE_SPACE            = 0,
+    CHAR_TYPE_SPACE            = 1 << 4,
+    CHAR_TYPE_UNKNOWN          = 0,
 };
 
 enum TOKEN_TYPE
@@ -99,7 +100,9 @@ enum OPCODES
 {
     OPCODE_MOV,
     OPCODE_ADD,
+    OPCODE_ADC,
     OPCODE_SUB,
+    OPCODE_SBB,
     OPCODE_MUL,
     OPCODE_DIV,
     OPCODE_CMP,

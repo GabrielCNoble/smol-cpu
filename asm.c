@@ -83,6 +83,7 @@ struct opcode_t opcodes[] = {
             {.opcode = ISA_OPCODE_ADD_STT_BASE, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
         }
     },
+    [OPCODE_ADC]    = {.name = "adc"},
     [OPCODE_SUB]    = {
         .name = "sub",
         .variant_count = 15,
@@ -108,6 +109,7 @@ struct opcode_t opcodes[] = {
             {.opcode = ISA_OPCODE_SUB_STT_BASE, .width = 2, .operands[0] = 1 << REG_STT, .operands[1] = 1 << REG_BASE},
         }
     },
+    [OPCODE_SBB]    = {.name = "sbb"},
     [OPCODE_MUL]    = {.name = "mul"},
     [OPCODE_DIV]    = {.name = "div"},
     [OPCODE_CMP]    = {
@@ -203,7 +205,6 @@ struct opcode_t opcodes[] = {
         .name = "push",
         .variant_count = 7,
         .variants = (struct opvariant_t []){
-            // {.opcode = ISA_OPCODE_PUSH_IMM8, .width = 1, .operands[0] = 1 << REG_CONST},
             {.opcode = ISA_OPCODE_PUSH_IMM16, .width = 2, .operands[0] = 1 << REG_CONST},
             {.opcode = ISA_OPCODE_PUSH_ACCL, .width = 2, .operands[0] = 1 << REG_ACCL},
             {.opcode = ISA_OPCODE_PUSH_ACCH, .width = 2, .operands[0] = 1 << REG_ACCH},
@@ -324,8 +325,8 @@ const char map[] = {
     ['7'] = CHAR_TYPE_CONSTANT,
     ['8'] = CHAR_TYPE_CONSTANT,
     ['9'] = CHAR_TYPE_CONSTANT,
-    ['\\'] = CHAR_TYPE_LITERAL,
-    ['\''] = CHAR_TYPE_CONSTANT | CHAR_TYPE_LITERAL,
+    // ['\\'] = CHAR_TYPE_LITERAL,
+    // ['\''] = CHAR_TYPE_CONSTANT | CHAR_TYPE_LITERAL,
 
     ['+'] = CHAR_TYPE_PUNCTUATOR,
     ['-'] = CHAR_TYPE_PUNCTUATOR,
@@ -337,6 +338,12 @@ const char map[] = {
     [')'] = CHAR_TYPE_PUNCTUATOR,
     ['.'] = CHAR_TYPE_PUNCTUATOR,
     ['\"'] = CHAR_TYPE_LITERAL,
+
+    [' '] = CHAR_TYPE_SPACE,
+    ['\n'] = CHAR_TYPE_SPACE,
+    ['\t'] = CHAR_TYPE_SPACE,
+    ['\r'] = CHAR_TYPE_SPACE,
+    ['\0'] = CHAR_TYPE_SPACE,
 };
 
 uint32_t line_source_offset = 0;
@@ -372,7 +379,7 @@ void lex_token()
     cur_token = next_token;
     next_token.type = TOKEN_TYPE_SPACE;
 
-    while(source_offset < source_len && map[source[source_offset]] == TOKEN_TYPE_SPACE)
+    while(source_offset < source_len && map[source[source_offset]] == CHAR_TYPE_SPACE)
     {
         if(source[source_offset] == '\n')
         {
@@ -385,9 +392,9 @@ void lex_token()
         source_offset++;
     }
 
-    if(map[source[source_offset]] == TOKEN_TYPE_SPACE)
+    if(map[source[source_offset]] == CHAR_TYPE_SPACE)
     {
-        next_token.type = TOKEN_TYPE_SPACE;
+        next_token.type = CHAR_TYPE_SPACE;
         return;
     }
 
@@ -436,16 +443,20 @@ void lex_token()
     }
     else
     {
-        /* integer constant */
         uint32_t maybe_constant = 0;
         uint32_t constant_type = CONSTANT_NONE;
         uint32_t start_column = column;
         uint32_t start_line = line;
         uint32_t start_offset = source_offset;
         while(source_offset < source_len && token_text_cursor < sizeof(token_text) && 
-                map[source[source_offset]] != CHAR_TYPE_SPACE && map[source[source_offset]] != CHAR_TYPE_PUNCTUATOR)
+                map[source[source_offset]] != CHAR_TYPE_SPACE && 
+                map[source[source_offset]] != CHAR_TYPE_PUNCTUATOR)
         {
             token_text[token_text_cursor] = source[source_offset];
+            if(map[source[source_offset]] == CHAR_TYPE_UNKNOWN)
+            {
+                piss(PISS_ERROR, "Invalid char at line %d, column %d!", start_line, column);
+            }
             source_offset++;
             token_text_cursor++;
             column++;
@@ -455,8 +466,9 @@ void lex_token()
         next_token.line = start_line;
         next_token.column = start_column;
 
-        if(map[token_text[0]] & CHAR_TYPE_CONSTANT)
+        if(map[token_text[0]] & CHAR_TYPE_CONSTANT || token_text[0] == '\'')
         {
+            /* integer constant */
             if(token_text_cursor > 2 && token_text[0] == '0' && (token_text[1] == 'b' || token_text[1] == 'B'))
             {
                 /* binary constants starts with a 0b, and may be valid only if there's at least one character after
@@ -509,13 +521,43 @@ void lex_token()
             {
                 /* check if we don't have strange stuff inside a constant (only applicable
                 if this isn't a char constant) */
-                for(uint32_t index = 1; index < token_text_cursor; index++)
+                if(constant_type == CONSTANT_BINARY)
                 {
-                    if(!(map[token_text[index]] & CHAR_TYPE_CONSTANT))
+                    for(uint32_t index = 2; index < token_text_cursor; index++)
                     {
-                        piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
+                        if(token_text[index] != '0' && token_text[index] != '1')
+                        {
+                            piss(PISS_ERROR, "Invalid binary constant at line %d, column %d!", start_line, start_column);
+                        }
                     }
                 }
+                else if(constant_type == CONSTANT_DECIMAL)
+                {
+                    for(uint32_t index = 1; index < token_text_cursor; index++)
+                    {
+                        if(map[token_text[index]] != CHAR_TYPE_CONSTANT)
+                        {
+                            piss(PISS_ERROR, "Invalid decimal constant type one line %d, column %d!", start_line, start_column);
+                        }
+                    }
+                }
+                else
+                {
+                    for(uint32_t index = 1; index < token_text_cursor; index++)
+                    {
+                        if(!(map[token_text[index]] & CHAR_TYPE_CONSTANT))
+                        {
+                            piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
+                        }
+                    }
+                }    
+                // for(uint32_t index = 1; index < token_text_cursor; index++)
+                // {
+                //     if(!(map[token_text[index]] & CHAR_TYPE_CONSTANT))
+                //     {
+                //         piss(PISS_ERROR, "Uknown constant type one line %d, column %d!", start_line, start_column);
+                //     }
+                // }
             }
         }
 
@@ -562,7 +604,7 @@ void lex_token()
         }
         else
         {
-            
+            // printf("%s\n", token_text);
             /* test all opcodes */
             for(uint32_t index = 0; index < OPCODE_LAST; index++)
             {
@@ -664,7 +706,7 @@ void filter_variants(struct opvariant_t *variant_buffer, uint32_t *variant_count
     operand:
         term
         [term]
-        [term + term]
+        [term +/- term]
 
     term:
         label-reference
@@ -681,226 +723,205 @@ void parse_instruction()
     struct token_t constant_token = {.type = TOKEN_TYPE_SPACE};
     // uint32_t operands[2] = {0, 0};
     struct operand_t operands[2] = {};
+    uint32_t negate_constant = 0;
     lex_token();
 
     memcpy(variant_buffer, opcode->variants, sizeof(struct opvariant_t) * opcode->variant_count);
     uint32_t variant_count = opcode->variant_count;
 
-    // printf("%d %d\n", cur_token.type, cur_token.token);
-
-    // if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token != PUNCTUATOR_LBRACE || cur_token.type != TOKEN_TYPE_PUNCTUATOR &&
-    //    cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_NAME)
-    // {
-    //     /* the current token isn't valid as part of an operand, so check if this instruction has a
-    //     no operand variant */
-    //     for(uint32_t index = 0; index < variant_count; index++)
-    //     {
-    //         if(variant_buffer[index].operands[0])
-    //         {
-    //             variant_buffer[index] = variant_buffer[variant_count - 1];
-    //             variant_count--;
-    //             index--;
-    //         }
-    //     }
-        
-    //     if(!variant_count)
-    //     {
-    //         piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
-    //     }
-    // }
-    // else
+    for(uint32_t operand_index = 0; operand_index < 2; operand_index++)
     {
-        for(uint32_t operand_index = 0; operand_index < 2; operand_index++)
+        uint32_t term_count = 1;
+        operands[operand_index].reg = REG_LAST;
+
+        if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
         {
-            uint32_t term_count = 1;
-            operands[operand_index].reg = REG_LAST;
+            uint32_t mask = 1 << REG_INDIRECT;
+            operands[operand_index].indirect = 1;
 
-            if(cur_token.type == TOKEN_TYPE_PUNCTUATOR && cur_token.token == PUNCTUATOR_LBRACE)
+            filter_variants(variant_buffer, &variant_count, operand_index, mask, mask);
+
+            if(!variant_count)
             {
-                uint32_t mask = 1 << REG_INDIRECT;
-                operands[operand_index].indirect = 1;
+                piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+            }
 
-                filter_variants(variant_buffer, &variant_count, operand_index, mask, mask);
+            term_count++;
+            lex_token();
+        }
+        else
+        {
+            uint32_t mask = 1 << REG_INDIRECT;
+            filter_variants(variant_buffer, &variant_count, operand_index, mask, 0);
 
-                if(!variant_count)
+            if(!variant_count)
+            {
+                piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+            }
+        }
+
+        for(uint32_t term_index = 0; term_index < term_count; term_index++)
+        {
+            if(cur_token.type == TOKEN_TYPE_REG)
+            {
+                /* register */
+
+                struct reg_t *reg = regs + cur_token.token;
+                if(operands[operand_index].reg != REG_LAST)
                 {
+                    /* only one register per operand is allowed */
                     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
 
-                term_count++;
+                operands[operand_index].reg = reg->value;
                 lex_token();
             }
-            else
+            else if(cur_token.type == TOKEN_TYPE_CONSTANT || (cur_token.type == TOKEN_TYPE_NAME && 
+                    (next_token.type != TOKEN_TYPE_PUNCTUATOR || next_token.token != PUNCTUATOR_COLLON)))
             {
-                uint32_t mask = 1 << REG_INDIRECT;
-                filter_variants(variant_buffer, &variant_count, operand_index, mask, 0);
+                /* constant or a label reference */
+                uint32_t reg_index = 1 << REG_CONST;
 
-                if(!variant_count)
+                if(operands[operand_index].constant)
                 {
+                    /* only one constant per operand is allowed */
                     piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
+
+                operands[operand_index].constant = 1;
+
+                constant_token = cur_token;
+                lex_token();
             }
 
-            for(uint32_t term_index = 0; term_index < term_count; term_index++)
+            if(!term_index)
             {
-                if(cur_token.type == TOKEN_TYPE_REG)
+                if(operands[operand_index].indirect)
                 {
-                    /* register */
-
-                    struct reg_t *reg = regs + cur_token.token;
-                    if(operands[operand_index].reg != REG_LAST)
+                    if(operands[operand_index].reg == REG_LAST && !operands[operand_index].constant)
                     {
-                        /* only one register per operand is allowed */
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
+                        /* there needs to be something inside the braces */
+                        piss(PISS_ERROR, "Expecting register, constant or label at line %d, column %d!", cur_token.line, cur_token.column);
                     }
 
-                    operands[operand_index].reg = reg->value;
-                    lex_token();
-                }
-                else if(cur_token.type == TOKEN_TYPE_CONSTANT || (cur_token.type == TOKEN_TYPE_NAME && 
-                       (next_token.type != TOKEN_TYPE_PUNCTUATOR || next_token.token != PUNCTUATOR_COLLON)))
-                {
-                    /* constant or a label reference */
-                    uint32_t reg_index = 1 << REG_CONST;
-
-                    if(operands[operand_index].constant)
+                    if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
                     {
-                        /* only one constant per operand is allowed */
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-
-                    operands[operand_index].constant = 1;
-
-                    constant_token = cur_token;
-                    lex_token();
-                }
-
-                if(!term_index)
-                {
-                    if(operands[operand_index].indirect)
-                    {
-                        if(operands[operand_index].reg == REG_LAST && !operands[operand_index].constant)
+                        if(cur_token.token == PUNCTUATOR_RBRACE)
                         {
-                            /* there needs to be something inside the braces */
-                            piss(PISS_ERROR, "Expecting register, constant or label at line %d, column %d!", cur_token.line, cur_token.column);
+                            /* this operand is composed by a single term, so we're done */
+                            lex_token();
+                            break;
                         }
-
-                        if(cur_token.type == TOKEN_TYPE_PUNCTUATOR)
+                        else if(cur_token.token == PUNCTUATOR_PLUS || cur_token.token == PUNCTUATOR_MINUS)
                         {
-                            if(cur_token.token == PUNCTUATOR_RBRACE)
-                            {
-                                /* this operand is composed by a single term, so we're done */
-                                lex_token();
-                                break;
-                            }
-                            else if(cur_token.token == PUNCTUATOR_PLUS)
-                            {
-                                /* we got a '+', so check for another term */
-                                lex_token();
+                            negate_constant = cur_token.token == PUNCTUATOR_MINUS;
 
-                                if(cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_NAME)
-                                {
-                                    piss(PISS_ERROR, "Expecting register, constant or label after '+' at line %d, column %d!", cur_token.line, cur_token.column);    
-                                }
-                            }
-                            else
+                            /* we got a '+' or a '-', so check for another term */
+                            lex_token();
+
+                            if(cur_token.type != TOKEN_TYPE_CONSTANT && cur_token.type != TOKEN_TYPE_REG && cur_token.type != TOKEN_TYPE_NAME)
                             {
-                                piss(PISS_ERROR, "Expecting '+' or ']' at line %d, column %d!", cur_token.line, cur_token.column);
+                                piss(PISS_ERROR, "Expecting register, constant or label after '+'/'-' at line %d, column %d!", cur_token.line, cur_token.column);    
                             }
                         }
                         else
                         {
-                            piss(PISS_ERROR, "Expecting '+' or ']' at line %d, column %d!", cur_token.line, cur_token.column);
+                            piss(PISS_ERROR, "Expecting '+', '-' or ']' at line %d, column %d!", cur_token.line, cur_token.column);
                         }
                     }
-                }
-                else
-                {
-                    if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_RBRACE)
+                    else
                     {
-                        piss(PISS_ERROR, "Expecting ']' at line %d, column %d!", cur_token.line, cur_token.column);
+                        piss(PISS_ERROR, "Expecting '+', '-' or ']' at line %d, column %d!", cur_token.line, cur_token.column);
                     }
-
-                    lex_token();
                 }
-            }
-
-            uint32_t mask;
-            uint32_t result;
-
-            if(operands[operand_index].reg == REG_LAST)
-            {
-                mask = REG_ALL_BIT;
-                result = 0;
             }
             else
             {
-                mask = 1 << operands[operand_index].reg;
-                result = mask;
-            }
-            filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
-
-            mask = 1 << REG_CONST;
-            result = 0;
-            if(operands[operand_index].constant)
-            {
-                result = mask;    
-            }
-
-            filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
-
-            if(!operand_index)
-            {
-                if(!variant_count)
+                if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_RBRACE)
                 {
-                    if(!operands[0].constant && operands[0].reg == REG_LAST)
-                    {
-                        /* no variants, no first operand, no service! */
-                        piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-                    else
-                    {
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
+                    piss(PISS_ERROR, "Expecting ']' at line %d, column %d!", cur_token.line, cur_token.column);
                 }
 
+                lex_token();
+            }
+        }
+
+        uint32_t mask;
+        uint32_t result;
+
+        if(operands[operand_index].reg == REG_LAST)
+        {
+            mask = REG_ALL_BIT;
+            result = 0;
+        }
+        else
+        {
+            mask = 1 << operands[operand_index].reg;
+            result = mask;
+        }
+        filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
+
+        mask = 1 << REG_CONST;
+        result = 0;
+        if(operands[operand_index].constant)
+        {
+            result = mask;    
+        }
+
+        filter_variants(variant_buffer, &variant_count, operand_index, mask, result);
+
+        if(!operand_index)
+        {
+            if(!variant_count)
+            {
                 if(!operands[0].constant && operands[0].reg == REG_LAST)
                 {
-                    /* we have no first operand but still have variants, which
-                    means this instruction takes not operands */
-                    break;
-                }
-
-                if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_COMMA)
-                {
-                    /* no comma after the first operand, so check if this instruction takes only one operand */
-                    filter_variants(variant_buffer, &variant_count, 1, REG_ALL_BIT, 0);
-                    
-                    if(!variant_count)
-                    {
-                        piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-
-                    break;
+                    /* no first operand, no variants, no service! */
+                    piss(PISS_ERROR, "Missing first operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
                 else
                 {
-                    /* we found a ',' */
-                    lex_token();
+                    printf("blah\n");
+                    piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
+            }
+
+            if(!operands[0].constant && operands[0].reg == REG_LAST)
+            {
+                /* we have no first operand but still have variants, which
+                means this instruction takes not operands */
+                break;
+            }
+
+            if(cur_token.type != TOKEN_TYPE_PUNCTUATOR || cur_token.token != PUNCTUATOR_COMMA)
+            {
+                /* no comma after the first operand, so check if this instruction takes only one operand */
+                filter_variants(variant_buffer, &variant_count, 1, REG_ALL_BIT, 0);
+                
+                if(!variant_count)
+                {
+                    piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
+                }
+
+                break;
             }
             else
             {
-                if(!variant_count)
+                /* we found a ',' */
+                lex_token();
+            }
+        }
+        else
+        {
+            if(!variant_count)
+            {
+                if(!operands[1].constant && operands[1].reg == REG_LAST)
                 {
-                    if(!operands[1].constant && operands[1].reg == REG_LAST)
-                    {
-                        piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
-                    else
-                    {
-                        piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
-                    }
+                    piss(PISS_ERROR, "Missing second operand at line %d, column %d!", cur_token.line, cur_token.column);
+                }
+                else
+                {
+                    piss(PISS_ERROR, "Invalid operand at line %d, column %d!", cur_token.line, cur_token.column);
                 }
             }
         }
@@ -908,6 +929,7 @@ void parse_instruction()
 
     if((variant_buffer[0].opcode & WORD_OPCODE_MASK) == WORD_OPCODE_MASK)
     {
+        /* 2 byte opcode */
         variant_buffer[0].opcode |= (operands[1].reg | (operands[0].reg << 4)) << 8;
     }
 
@@ -932,7 +954,14 @@ void parse_instruction()
         }
         else
         {
-            constant = constant_token.token;
+            if(negate_constant)
+            {
+                constant = -constant_token.token;
+            }
+            else
+            {
+                constant = constant_token.token;
+            }
         }
 
         if(variant_buffer[0].width == 1)
@@ -958,7 +987,6 @@ void parse_label()
     {
         /* this is a label */
         struct label_t *label = create_label(&label_token, output_offset);
-        // printf("create label %s\n", label->name);
         lex_token();
     }
     else
