@@ -33,12 +33,12 @@ The syntax is very similar to Intel's x86 assembly:
 Some instructions have two operands, some have one and some have none.
 
 The cpu has 6 software visible registers:
-	`accl` - Accumulator low byte. 8 bit general purpose register.
-	`acch` - Accumulator high byte. 8 bit general purpose register.
-	`accw` /`acc` - Accumulator. 16 bit general purpose register.
-	`base` - 16 bit general purpose register. Has some special uses in the io instructions.
-	`stt` - Stack top, 16 bit general purpose register. Works just like the x86 sp register. Decrements before pushing, increments after popping, so it points at the last thing pushed onto the stack.
-	`stb` - Stack bottom, 16 bit register. Exists mostly to simplify accessing function arguments/local variables while stt changes. Can only be initialized by `stt`.
+	- `accl` - Accumulator low byte. 8 bit general purpose register.
+	- `acch` - Accumulator high byte. 8 bit general purpose register.
+	- `accw` /`acc` - Accumulator. 16 bit general purpose register.
+	- `base` - 16 bit general purpose register. Has some special uses in the io instructions.
+	- `stt` - Stack top, 16 bit general purpose register. Works just like the x86 sp register. Decrements before pushing, increments after popping, so it points at the last thing pushed onto the stack.
+	- `stb` - Stack bottom, 16 bit register. Exists mostly to simplify accessing function arguments/local variables while stt changes. Can only be initialized by `stt`.
 
 5 addressing modes are supported:
 	- register to register (e.g. `mov accw, base`)
@@ -52,14 +52,14 @@ The cpu has 6 software visible registers:
 
 #### Labels
 It's possible to define labels, to be used either as jump targets, function calls or as variables. A label may start with a lower case, upper case or an underscore. The syntax is similar to the gnu assembler:
-	`label_name:`
+: `label_name:`
 
 To reference a label, just use its name, without the collon:
-	`jmp label_name`
+: `jmp label_name`
 
 A label name resolves to its offset inside the code. If a label is used to "name" a variable,
 the indirect addressing mode must be used to access its value:
-	`mov base, [label_name]`
+: `mov base, [label_name]`
 
 
 
@@ -76,26 +76,26 @@ The assembler also accepts string literals. Those are similar to C/C++ as well. 
 It's possible to reserve storage for data by using either the `.byte`, `.word` or `.string`  directives. 
 
 By themselves, the `.byte` and `.word` directives reserve a single item of their type.
-	`.byte` - reserves storage for a single zero initialized byte.
-	`.word` - reserves storage for a single zero initialized word.
+: `.byte` - reserves storage for a single zero initialized byte.
+: `.word` - reserves storage for a single zero initialized word.
 
 Those directives accept an arbitrary number of initializers, and enough space is reserved for all of the values.
-	`.byte 'b' 'a' 'l' 'l' 'z'` - reserves storage for 5 bytes, and initialize them to the provided values.
-	`.word 0x0 0x1 0x2 0x3` - same deal as above, but for words.
+: `.byte 'b' 'a' 'l' 'l' 'z'` - reserves storage for 5 bytes, and initialize them to the provided values
+: `.word 0x0 0x1 0x2 0x3` - same deal as above, but for words.
 
 It's also possible to pass a count parameter to those directives, which will make the assembler allocate the number of specified items.
-	`.byte(0x10)` - allocates 16 zero initialized bytes.
-	`.word (8)` - allocates 8 zero initialized words.
+: `.byte(0x10)` - allocates 16 zero initialized bytes.
+: `.word (8)` - allocates 8 zero initialized words.
 
 The count parameter and initializers are allowed at the same time. If the count parameter specifies more items than there are initializers for, the remaining items will be zero initialized. If the number of initializers is bigger than the count parameter, enough space is allocated to accomodate all initializers.
 
 The following snippet allocates 0x100 bytes to be used as the stack:
-	`mov stt, stack
+	```mov stt, stack
 	.byte(0x100)
-	stack:`
+	stack:```
 
-The `.string` directive reserves storage for a null terminated string constant. 
-	`.string "aaaaaAAAAAAAAHHHHHHH"`
+The `.string` directive reserves storage for a null terminated string constant
+: `.string "aaaaaAAAAAAAAHHHHHHH"`
 	
 It doesn't accept a count parameter, and always expects a string constant.
 
