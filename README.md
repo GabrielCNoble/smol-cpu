@@ -2,7 +2,7 @@
 
 
 ### Description
-This is a small cpu built in Logisim.
+This is a small cpu built in [Logisim-evolution](https://github.com/logisim-evolution/logisim-evolution).
 
 ![The cpu core](images/cpu.png "The cpu core")
 It has a 16 bit (memory/io) address space, 8 bit data bus and variable length opcodes (either 1 or 2 byte opcodes).
